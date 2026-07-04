@@ -54,6 +54,8 @@
     "full_offset_y": -0.03
   },
   "voice": {
+    "gpt_model": "voice/models/chun-e15.ckpt",
+    "sovits_model": "voice/models/chun_e6_s96.pth",
     "tone_refs": "tone_refs.txt",
     "ref_lang": "zh",
     "text_lang": "zh"

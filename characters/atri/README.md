@@ -1,49 +1,21 @@
 # 亚托莉（ATRI）
 
-**配置模板**，不包含 Live2D 模型与语音权重（提取自《ATRI -My Dear Moments-》游戏客户端，存在版权/再配布风险）。
+完整可用角色，包含 Live2D 模型、语音权重、头像与配置。
 
-## 资源状态
+## 资源完整度
 
-- ❌ Live2D 模型（需用户自备）
-- ❌ 语音权重与参考音频（需用户自备或自行训练）
-- ❌ 头像图片（需用户自备）
+- ✅ Live2D 模型（`live2d/atri_8.model3.json`）
+- ✅ 语音权重（`voice/models/yatuoli-e15.ckpt` + `yatuoli_e8_s232.pth`）
+- ✅ 语音参考音频（`voice/refs/tone_refs/ATR_b101_021.wav` + `tone_refs.txt`）
+- ✅ 头像（`portrait_default.jpg`）
 - ✅ 角色卡片（`card.md`）
-- ✅ 配置模板（`character.json`）
 
-## 如何使用
+## 启动方式
 
-### 1. 准备 Live2D 模型
-
-从游戏客户端提取或自行获取授权后，放入：
-
-```
-characters/atri/live2d/
-└── atri_8.model3.json
-```
-
-在 `character.json` 中启用 renderer：
-
-- 将 `_renderer_disabled` 字段改名为 `renderer`
-- 确认 `model` 字段指向 `atri_8.model3.json`
-
-### 2. 准备语音权重（可选）
-
-使用 GPT-SoVITS 训练日文语音权重，或获取授权权重后：
-
-1. 准备参考音频（`.wav`）和 `tone_refs.txt`
-2. 将 GPT 权重与 SoVITS 权重放入可访问路径
-3. 在 `character.json` 中启用 voice：
-   - 将 `_voice_disabled` 字段改名为 `voice`
-   - 填入 `gpt_model`、`sovits_model`、`tone_refs` 实际路径
-
-### 3. 准备头像（可选）
-
-放置 `portrait_default.jpg` 到当前目录，并在 `portrait` 段增加：
-
-```json
-"default": "portrait_default.jpg"
-```
+1. 确保已安装 GPT-SoVITS（参见根 README）
+2. 启动 Sakura 主程序
+3. 选择"亚托莉"角色即可使用
 
 ## 版权说明
 
-本模板仅包含配置文本，不包含《ATRI -My Dear Moments-》的游戏资源。请在获得适当授权后再使用相关资源。
+Live2D 模型与语音资源提取自《ATRI -My Dear Moments-》游戏客户端。本仓库仅供学习交流使用，请勿用于商业用途。如您是原作者或版权持有者，请联系仓库所有者说明授权情况。

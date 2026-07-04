@@ -4,8 +4,7 @@
   "initial_message": "您呼唤我了吗？如果有希望我做的事，请尽管说。",
   "card": "card.md",
   "portrait": {
-    "default": "PLACEHOLDER_see_README.jpg",
-    "_note": "占位符文件名。需要用户自行准备头像图片，改名为 portrait_default.jpg 并放入当前目录后生效。",
+    "default": "portrait_default.jpg",
     "expressions": {}
   },
   "theme": {
@@ -45,7 +44,6 @@
     "type": "live2d",
     "model": "atri_8.model3.json",
     "model_dir": "live2d",
-    "_model_dir_note": "本仓库未附带 Live2D 模型资源（提取自游戏客户端，存在版权/再配布风险）。请自行获取《ATRI -My Dear Moments-》相关 Live2D 模型，放入 characters/atri/live2d/ 目录后生效。",
     "fallback": "hidden",
     "mode": "half",
     "model_scale": 1.0,
@@ -295,10 +293,9 @@
     }
   },
   "voice": {
-    "gpt_model": "",
-    "sovits_model": "",
-    "tone_refs": "PLACEHOLDER_see_README.txt",
-    "_note": "tone_refs 为占位符。本仓库未附带日文语音参考音频与 GPT-SoVITS 权重（提取自游戏客户端，存在版权/再配布风险）。请自行准备 GPT-SoVITS 训练权重和参考音频后，填入 gpt_model/sovits_model 实际路径，并准备 tone_refs.txt（格式见 README）及其引用的参考 wav。",
+    "gpt_model": "voice/models/yatuoli-e15.ckpt",
+    "sovits_model": "voice/models/yatuoli_e8_s232.pth",
+    "tone_refs": "voice/tone_refs.txt",
     "ref_lang": "ja",
     "text_lang": "ja"
   }

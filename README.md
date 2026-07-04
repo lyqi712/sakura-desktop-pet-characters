@@ -74,14 +74,14 @@
 
 ### 椿（Chun）✅ 完整可用
 
-- 包含 Live2D 模型、语音参考音频、头像
+- 包含 Live2D 模型、语音权重、语音参考音频、头像
 - 可直接使用，无需额外准备资源
 - 详见 [characters/chun/README.md](characters/chun/README.md)
 
-### 亚托莉（ATRI）⚠️ 仅配置模板
+### 亚托莉（ATRI）✅ 完整可用
 
-- 不包含 Live2D 模型与语音权重（游戏资源提取，存在版权风险）
-- 需用户自行准备资源后启用
+- 包含 Live2D 模型、语音权重、语音参考音频、头像
+- 可直接使用，无需额外准备资源
 - 详见 [characters/atri/README.md](characters/atri/README.md)
 
 ### 达妮娅（Dania）⚠️ 仅配置模板

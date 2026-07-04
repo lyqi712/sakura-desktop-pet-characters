@@ -1,0 +1,113 @@
+{
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "atri_8.moc3",
+		"Textures": [
+			"atri_8.4096/texture_00.png",
+			"atri_8.4096/texture_01.png"
+		],
+		"Physics": "atri_8.physics3.json",
+		"DisplayInfo": "atri_8.cdi3.json",
+		"Expressions": [
+			{
+				"Name": "脸红",
+				"File": "expression1.exp3.json"
+			},
+			{
+				"Name": "眼高光消失",
+				"File": "expression2.exp3.json"
+			},
+			{
+				"Name": "睡衣",
+				"File": "expression3.exp3.json"
+			},
+			{
+				"Name": "泳装",
+				"File": "expression4.exp3.json"
+			},
+			{
+				"Name": "凉鞋",
+				"File": "expression5.exp3.json"
+			},
+			{
+				"Name": "皮鞋",
+				"File": "expression6.exp3.json"
+			},
+			{
+				"Name": "白眼",
+				"File": "expression7.exp3.json"
+			},
+			{
+				"Name": "消失屏幕",
+				"File": "expression8.exp3.json"
+			},
+			{
+				"Name": "血衣",
+				"File": "expression9.exp3.json"
+			},
+			{
+				"Name": "鸟",
+				"File": "expression10.exp3.json"
+			},
+			{
+				"Name": "kani",
+				"File": "expression11.exp3.json"
+			},
+			{
+				"Name": "枕头隐藏",
+				"File": "expression12.exp3.json"
+			},
+			{
+				"Name": "枕头显示",
+				"File": "expression13.exp3.json"
+			},
+			{
+				"Name": "南瓜裤",
+				"File": "expression14.exp3.json"
+			},
+			{
+				"Name": "暗淡",
+				"File": "expression15.exp3.json"
+			},
+			{
+				"Name": "黑脸",
+				"File": "expression16.exp3.json"
+			}
+		],
+		"Motions": {
+			"Idle": [
+				{
+					"File": "model.motion3.json"
+				}
+			],
+			"DecorateLeft": [
+				{
+					"File": "dec-l.motion3.json"
+				}
+			],
+			"DecorateRight": [
+				{
+					"File": "dec-r.motion3.json"
+				}
+			]
+		}
+	},
+	"Groups": [
+		{
+			"Target": "Parameter",
+			"Name": "EyeBlink",
+			"Ids": [
+				"ParamEyeLOpen",
+				"ParamEyeROpen"
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Name": "LipSync",
+			"Ids": [
+				"ParamMouthForm",
+				"ParamMouthOpenY"
+			]
+		}
+	]
+}

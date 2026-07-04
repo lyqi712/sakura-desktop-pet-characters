@@ -75,6 +75,8 @@ desktop.ini
 *.mp4
 !characters/chun/chun_ref.wav
 !characters/chun/tone_refs.txt
+!characters/atri/voice/refs/tone_refs/*.wav
+!characters/atri/voice/tone_refs.txt
 
 # Node modules (if any tooling uses npm)
 node_modules/
@@ -83,7 +85,9 @@ node_modules/
 *.msi
 *.msix
 
-# GPT-SoVITS artifacts (never commit weights)
+# GPT-SoVITS artifacts (exclude by default, but allow character voice models)
 *.ckpt
 *.pth
+!characters/*/voice/models/*.ckpt
+!characters/*/voice/models/*.pth
 !requirements*.txt

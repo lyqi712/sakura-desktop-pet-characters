@@ -1,10 +1,11 @@
 # 椿（Chun）
 
-完整可用角色，包含 Live2D 模型、语音参考音频、头像与配置。
+完整可用角色，包含 Live2D 模型、语音权重、语音参考音频、头像与配置。
 
 ## 资源完整度
 
 - ✅ Live2D 模型（`live2d/椿.model3.json`）
+- ✅ 语音权重（`voice/models/chun-e15.ckpt` + `chun_e6_s96.pth`）
 - ✅ 语音参考音频（`chun_ref.wav` + `tone_refs.txt`）
 - ✅ 头像（`portrait_default.png`）
 - ✅ 角色卡片（`card.md`）
