@@ -1,0 +1,71 @@
+{
+  "attempt": 0,
+  "status": {
+    "steps": [
+      {
+        "name": "model-url",
+        "data": "file:///D:/Sakura/data/live2d/chun/椿.model3.json"
+      },
+      {
+        "name": "model-response",
+        "data": {
+          "ok": true,
+          "status": 200,
+          "url": "file:///D:/Sakura/data/live2d/chun/%E6%A4%BF.model3.json"
+        }
+      },
+      {
+        "name": "model-json",
+        "data": {
+          "version": 3,
+          "moc": "椿.moc3",
+          "textures": [
+            "椿.4096/texture_00.png",
+            "椿.4096/texture_01.png",
+            "椿.4096/texture_02.png"
+          ]
+        }
+      },
+      {
+        "name": "moc-url",
+        "data": "file:///D:/Sakura/data/live2d/chun/%E6%A4%BF.moc3"
+      },
+      {
+        "name": "moc-response",
+        "data": {
+          "ok": true,
+          "status": 200,
+          "url": "file:///D:/Sakura/data/live2d/chun/%E6%A4%BF.moc3",
+          "contentType": "x-application/moc3"
+        }
+      },
+      {
+        "name": "moc-bytes",
+        "data": {
+          "byteLength": 6469824,
+          "head": [
+            77,
+            79,
+            67,
+            51,
+            5,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "ascii": "MOC3............"
+        }
+      }
+    ],
+    "errors": [],
+    "done": true
+  }
+}

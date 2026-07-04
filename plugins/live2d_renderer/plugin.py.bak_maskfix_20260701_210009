@@ -1,0 +1,1436 @@
+﻿from __future__ import annotations
+
+import json
+import traceback
+import datetime
+from pathlib import Path
+from typing import Any
+
+from PySide6.QtCore import QEvent, QEventLoop, QObject, QPoint, QTimer, QUrl, Qt, Signal, Slot
+
+from app.core.debug_log import debug_log
+from app.plugins import PluginBase, PluginCapabilityRegistry, PluginContext
+from app.plugins.models import RendererContribution, RendererCreateContext
+from app.renderers.base import CharacterRenderer
+
+
+_PLUGIN_DIR = Path(__file__).parent
+_LOG = _PLUGIN_DIR / "init_debug.log"
+_GEOMETRY_JITTER_PX = 2
+
+
+_SCENE_ACTIONS_SCRIPT = """
+// Configurable scene actions: persistent layers, transient params, motions, and event hooks.
+function _sceneActionObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+function _sceneActionArray(value) {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === 'object') return [value];
+  return [];
+}
+function _sceneActionParams(value) {
+  return _sceneActionObject(value);
+}
+function _sceneActionParamNames(action) {
+  var params = _sceneActionParams(action && action.params);
+  return Object.keys(params);
+}
+function _sceneActionFind(items, id) {
+  var wanted = String(id || '');
+  for (var i = 0; i < items.length; i++) {
+    if (String(items[i].id || '') === wanted) return items[i];
+  }
+  return null;
+}
+window.SakuraLive2DSceneActions = {
+  activeLayers: {},
+  transientTimers: {},
+  idleTimer: null,
+  ownParam: function(param, owned) {
+    var key = String(param || '').trim();
+    if (!key) return;
+    if (owned) _SCENE_ACTION_OWNED_PARAMS[key] = true;
+    else delete _SCENE_ACTION_OWNED_PARAMS[key];
+  },
+  writeParams: function(params, owned) {
+    var cm = _getCoreModel();
+    if (!cm || typeof cm.setParameterValueByIndex !== 'function') return;
+    var ids = _parameterIds(cm);
+    params = _sceneActionParams(params);
+    var names = Object.keys(params);
+    for (var i = 0; i < names.length; i++) {
+      var param = names[i];
+      var value = Number(params[param]);
+      if (!isFinite(value)) continue;
+      _setParamByName(cm, ids, param, value);
+      if (owned) SakuraLive2DSceneActions.ownParam(param, true);
+    }
+    _applyRenderGuards(cm, true);
+  },
+  resetParams: function(params, resetParams) {
+    var cm = _getCoreModel();
+    if (!cm || typeof cm.setParameterValueByIndex !== 'function') return;
+    var ids = _parameterIds(cm);
+    params = _sceneActionParams(params);
+    resetParams = _sceneActionParams(resetParams);
+    var names = Object.keys(params);
+    for (var i = 0; i < names.length; i++) {
+      var param = names[i];
+      var value = Object.prototype.hasOwnProperty.call(resetParams, param) ? Number(resetParams[param]) : 0;
+      if (!isFinite(value)) value = 0;
+      _setParamByName(cm, ids, param, value);
+      SakuraLive2DSceneActions.ownParam(param, false);
+    }
+    _applyRenderGuards(cm, true);
+  },
+  clearLayer: function(layerName) {
+    var layers = _sceneActionObject(_SCENE_ACTIONS.layers);
+    var items = _sceneActionArray(layers[layerName]);
+    for (var i = 0; i < items.length; i++) {
+      this.resetParams(items[i].params, items[i].resetParams);
+    }
+    delete this.activeLayers[layerName];
+  },
+  applyLayer: function(layerName, id) {
+    var layers = _sceneActionObject(_SCENE_ACTIONS.layers);
+    var items = _sceneActionArray(layers[layerName]);
+    var action = _sceneActionFind(items, id);
+    if (!action) return false;
+    this.clearLayer(layerName);
+    this.writeParams(action.params, true);
+    this.activeLayers[layerName] = action;
+    return true;
+  },
+  applyTransient: function(id, durationMs) {
+    var transients = _sceneActionObject(_SCENE_ACTIONS.transients);
+    var action = transients[String(id || '')];
+    if (!action) return false;
+    var duration = Number(durationMs || action.durationMs || 1600);
+    if (!isFinite(duration) || duration <= 0) duration = 1600;
+    if (this.transientTimers[id]) clearTimeout(this.transientTimers[id]);
+    this.writeParams(action.params, true);
+    this.transientTimers[id] = setTimeout(function() {
+      SakuraLive2DSceneActions.resetParams(action.params, action.resetParams);
+      delete SakuraLive2DSceneActions.transientTimers[id];
+    }, duration);
+    return true;
+  },
+  playMotionAction: function(id) {
+    var motions = _sceneActionObject(_SCENE_ACTIONS.motions);
+    var action = motions[String(id || '')];
+    if (!action || !action.motion) return false;
+    playMotion(action.motion, !!action.loop);
+    return true;
+  },
+  runAction: function(action, payload) {
+    action = _sceneActionObject(action);
+    var kind = String(action.kind || '').trim();
+    try {
+      if (kind === 'layer') return this.applyLayer(action.layer, action.id);
+      if (kind === 'transient') return this.applyTransient(action.id, action.durationMs);
+      if (kind === 'motion') return this.playMotionAction(action.id);
+      if (kind === 'expression') {
+        setExpression(action.name || action.id || '', Number(action.weight || 1.0));
+        return true;
+      }
+      if (kind === 'params') {
+        this.writeParams(action.params, true);
+        var duration = Number(action.durationMs || 0);
+        if (isFinite(duration) && duration > 0) {
+          setTimeout(function() {
+            SakuraLive2DSceneActions.resetParams(action.params, action.resetParams);
+          }, duration);
+        }
+        return true;
+      }
+    } catch (error) {
+      _recordExpressionError('scene-action-' + kind, error);
+    }
+    return false;
+  },
+  runActions: function(actions, payload) {
+    var list = _sceneActionArray(actions);
+    for (var i = 0; i < list.length; i++) this.runAction(list[i], payload || {});
+  },
+  pickWeighted: function(pool) {
+    var items = _sceneActionArray(pool);
+    if (!items.length) return null;
+    var total = 0;
+    for (var i = 0; i < items.length; i++) {
+      var weight = Number(items[i].weight || 1);
+      if (isFinite(weight) && weight > 0) total += weight;
+    }
+    if (total <= 0) return items[Math.floor(Math.random() * items.length)];
+    var cursor = Math.random() * total;
+    for (var j = 0; j < items.length; j++) {
+      var itemWeight = Number(items[j].weight || 1);
+      if (!isFinite(itemWeight) || itemWeight <= 0) continue;
+      cursor -= itemWeight;
+      if (cursor <= 0) return items[j];
+    }
+    return items[items.length - 1];
+  },
+  runIdleAction: function() {
+    if (_SCENE_ACTIONS.enabled === false) return;
+    var action = this.pickWeighted(_SCENE_ACTIONS.idlePool);
+    if (action) this.runAction(action, {source: 'idle'});
+  },
+  startIdleTimer: function() {
+    if (_SCENE_ACTIONS.enabled === false || this.idleTimer) return;
+    var interval = Number(_SCENE_ACTIONS.idleIntervalMs || 18000);
+    if (!isFinite(interval) || interval < 3000) interval = 18000;
+    this.idleTimer = setInterval(function() {
+      _runSceneIdleAction();
+    }, interval);
+  },
+  dispatch: function(eventName, payload) {
+    if (_SCENE_ACTIONS.enabled === false) return;
+    var events = _sceneActionObject(_SCENE_ACTIONS.events);
+    this.runActions(events[String(eventName || '')], payload || {});
+  }
+};
+function _runSceneIdleAction() {
+  if (window.SakuraLive2DSceneActions) window.SakuraLive2DSceneActions.runIdleAction();
+}
+function _installSceneActionEventHandlers() {
+  if (window.__sakuraSceneActionHandlersInstalled) return;
+  window.__sakuraSceneActionHandlersInstalled = true;
+  window.addEventListener('sakura:tts.started', function(event) {
+    dispatchLive2DSceneEvent('tts.started', event.detail || {});
+  });
+  window.addEventListener('sakura:llm.request.started', function(event) {
+    dispatchLive2DSceneEvent('llm.request.started', event.detail || {});
+  });
+  window.addEventListener('sakura:pet.clicked', function(event) {
+    dispatchLive2DSceneEvent('pet.clicked', event.detail || {});
+  });
+  window.SakuraLive2DSceneActions.startIdleTimer();
+}
+window.dispatchLive2DSceneEvent = function(eventName, payload) {
+  if (window.SakuraLive2DSceneActions) {
+    window.SakuraLive2DSceneActions.dispatch(eventName, payload || {});
+  }
+};
+window.triggerLive2DSceneAction = function(kind, name) {
+  if (!window.SakuraLive2DSceneActions) return false;
+  kind = String(kind || '').trim();
+  name = name == null ? '' : String(name || '').trim();
+  if (kind === 'idle') return window.SakuraLive2DSceneActions.runIdleAction();
+  if (kind === 'layer') {
+    var sep = name.indexOf(':');
+    if (sep <= 0) return false;
+    return window.SakuraLive2DSceneActions.applyLayer(name.slice(0, sep), name.slice(sep + 1));
+  }
+  if (kind === 'motion') return window.SakuraLive2DSceneActions.playMotionAction(name);
+  if (kind === 'transient') return window.SakuraLive2DSceneActions.applyTransient(name);
+  return false;
+};
+"""
+
+
+def _w(msg: str) -> None:
+    with _LOG.open("a", encoding="utf-8") as f:
+        f.write(f"[{datetime.datetime.now()}] {msg}\n")
+
+
+class _JavaScriptRunner(QObject):
+    run_requested = Signal(str)
+    run_with_callback_requested = Signal(str, object)
+
+    def __init__(self, view: Any) -> None:
+        super().__init__(view)
+        self._view = view
+        self.run_requested.connect(self._run, Qt.ConnectionType.QueuedConnection)
+        self.run_with_callback_requested.connect(self._run_with_callback, Qt.ConnectionType.QueuedConnection)
+
+    @Slot(str)
+    def _run(self, script: str) -> None:
+        try:
+            if self._view is not None:
+                self._view.page().runJavaScript(script)
+        except Exception:  # noqa: BLE001 - JS 鎶曢€掑け璐ヤ笉鑳借鍚庡彴 worker 宕╀富杩涚▼
+            _w("EXCEPTION in _JavaScriptRunner:\n" + traceback.format_exc())
+
+    @Slot(str, object)
+    def _run_with_callback(self, script: str, callback: Any) -> None:
+        try:
+            if self._view is not None:
+                self._view.page().runJavaScript(script, callback)
+        except Exception:  # noqa: BLE001 - JS 鎶曢€掑け璐ヤ笉鑳借鍚庡彴 worker 宕╀富杩涚▼
+            _w("EXCEPTION in _JavaScriptRunner callback:\n" + traceback.format_exc())
+
+    def submit(self, script: str) -> None:
+        self.run_requested.emit(script)
+
+    def submit_with_callback(self, script: str, callback: Any) -> None:
+        self.run_with_callback_requested.emit(script, callback)
+
+
+class Live2DRenderer(CharacterRenderer):
+    renderer_name = "live2d"
+    uses_owner_coordinates = False
+    supports_drag_snapshot = True
+
+    def __init__(self, ctx: RendererCreateContext) -> None:
+        self._ctx = ctx
+        self._view: Any | None = None
+        self._js_runner: _JavaScriptRunner | None = None
+        self._initialized = False
+        self._mode = "half"
+        self._last_geometry: tuple[int, int, int, int, int] | None = None
+        self._last_stack_state: tuple[int | None, bool | None] | None = None
+
+    @property
+    def replaces_default_portrait(self) -> bool:
+        return self._initialized and self._view is not None
+
+    def is_available(self) -> bool:
+        try:
+            from PySide6.QtWebEngineWidgets import QWebEngineView  # noqa: F401
+            return True
+        except ImportError:
+            return False
+
+    def initialize(self, app_context: dict[str, Any] | None = None) -> None:
+        try:
+            cfg = self._ctx.renderer_config or {}
+            self._mode = _normalize_mode(cfg.get("mode"))
+            _w(f"initialize called: cfg={cfg}")
+            _w(f"package_dir={self._ctx.package_dir}")
+
+            # Prefer renderer_config.model_dir when present; it may be absolute or package-relative.
+            model_dir_str = cfg.get("model_dir", "")
+            if model_dir_str:
+                model_dir = Path(model_dir_str)
+                if not model_dir.is_absolute():
+                    model_dir = (self._ctx.package_dir / model_dir).resolve()
+            else:
+                model_dir = self._ctx.package_dir
+
+            model_name = cfg.get("model", "")
+            model_path = (model_dir / model_name) if model_name else None
+            _w(f"model_dir={model_dir} exists={model_dir.exists()}")
+            _w(f"model_path={model_path} exists={model_path.exists() if model_path else 'N/A'}")
+
+            if model_path is None or not model_path.exists():
+                for search_root in (model_dir, self._ctx.package_dir):
+                    found = list(search_root.rglob("*.model3.json"))
+                    if found:
+                        model_path = found[0]
+                        _w(f"fallback found: {model_path}")
+                        break
+
+            if model_path is None or not model_path.exists():
+                _w("ABORT: no model3.json found")
+                raise FileNotFoundError("Live2D model3.json not found")
+
+            vendor_dir = _PLUGIN_DIR / "vendor"
+            html = _build_html(
+                model_path,
+                vendor_dir,
+                mode=self._mode,
+                model_scale=cfg.get("model_scale", 1.0),
+                half_scale=cfg.get("half_scale", cfg.get("halfScale", 1.85)),
+                full_scale=cfg.get("full_scale", cfg.get("fullScale", 0.98)),
+                resolution_scale=cfg.get("resolution_scale", cfg.get("resolutionScale", 1.8)),
+                max_resolution=cfg.get("max_resolution", cfg.get("maxResolution", 4.5)),
+                half_offset_y=cfg.get("half_offset_y", cfg.get("halfOffsetY", 0.0)),
+                full_offset_y=cfg.get("full_offset_y", cfg.get("fullOffsetY", 0.01)),
+                safe_reset_params=cfg.get("safe_reset_params", cfg.get("safeResetParams")),
+                hidden_parts=cfg.get("hidden_parts", cfg.get("hiddenParts")),
+                hidden_drawables=cfg.get("hidden_drawables", cfg.get("hiddenDrawables")),
+                disable_vendor_expressions=cfg.get(
+                    "disable_vendor_expressions",
+                    cfg.get("disableVendorExpressions", False),
+                ),
+                scene_actions=cfg.get("scene_actions", cfg.get("sceneActions")),
+            )
+
+            parent = self._ctx.owner_window
+            from PySide6.QtWebEngineWidgets import QWebEngineView
+
+            class DraggableLive2DView(QWebEngineView):
+                def __init__(self, parent_widget: Any, owner_window: Any) -> None:
+                    super().__init__(parent_widget)
+                    self._owner_window = owner_window
+                    self._event_filters_installed = False
+                    self.setContextMenuPolicy(Qt.ContextMenuPolicy.DefaultContextMenu)
+
+                def install_mouse_forwarders(self) -> None:
+                    if self._event_filters_installed:
+                        return
+                    self.installEventFilter(self)
+                    for child in self.findChildren(object):
+                        install = getattr(child, "installEventFilter", None)
+                        if callable(install):
+                            install(self)
+                    self._event_filters_installed = True
+
+                def eventFilter(self, watched: Any, event: Any) -> bool:  # noqa: N802
+                    event_type = event.type()
+                    if event_type == QEvent.Type.ContextMenu:
+                        return self._open_owner_menu(event)
+                    if event_type == QEvent.Type.MouseButtonPress:
+                        return self._forward_mouse_press(event, watched)
+                    if event_type == QEvent.Type.MouseMove:
+                        return self._forward_mouse_move(event)
+                    if event_type == QEvent.Type.MouseButtonRelease:
+                        return self._forward_mouse_release(event)
+                    return super().eventFilter(watched, event)
+
+                def contextMenuEvent(self, event: Any) -> None:  # noqa: N802
+                    if self._open_owner_menu(event):
+                        return
+                    super().contextMenuEvent(event)
+
+                def mousePressEvent(self, event: Any) -> None:  # noqa: N802
+                    if self._forward_mouse_press(event, self):
+                        return
+                    super().mousePressEvent(event)
+
+                def mouseMoveEvent(self, event: Any) -> None:  # noqa: N802
+                    if self._forward_mouse_move(event):
+                        return
+                    super().mouseMoveEvent(event)
+
+                def mouseReleaseEvent(self, event: Any) -> None:  # noqa: N802
+                    if self._forward_mouse_release(event):
+                        return
+                    super().mouseReleaseEvent(event)
+
+                def _open_owner_menu(self, event: Any) -> bool:
+                    menu_handler = getattr(self._owner_window, "_show_context_menu", None)
+                    if not callable(menu_handler):
+                        return False
+                    menu_handler(QPoint(0, 0))
+                    event.accept()
+                    return True
+
+                def _forward_mouse_press(self, event: Any, source_widget: Any) -> bool:
+                    if event.button() == Qt.MouseButton.RightButton:
+                        return self._open_owner_menu(event)
+                    handler = getattr(self._owner_window, "_handle_mouse_press", None)
+                    return bool(callable(handler) and handler(event, source_widget))
+
+                def _forward_mouse_move(self, event: Any) -> bool:
+                    handler = getattr(self._owner_window, "_handle_mouse_move", None)
+                    return bool(callable(handler) and handler(event))
+
+                def _forward_mouse_release(self, event: Any) -> bool:
+                    handler = getattr(self._owner_window, "_handle_mouse_release", None)
+                    return bool(callable(handler) and handler(event))
+
+            self._view = DraggableLive2DView(parent, parent)
+            self._js_runner = _JavaScriptRunner(self._view)
+            self._view.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+            self._view.page().setBackgroundColor(Qt.GlobalColor.transparent)
+            self._view.setWindowFlags(
+                Qt.WindowType.FramelessWindowHint
+                | Qt.WindowType.Tool
+                | Qt.WindowType.WindowStaysOnTopHint
+            )
+
+            tmp = _PLUGIN_DIR / "live2d_view.html"
+            tmp.write_text(html, encoding="utf-8")
+            self._view.load(QUrl.fromLocalFile(str(tmp)))
+            self._view.resize(420, 570)
+            self._view.show()
+            self._view.install_mouse_forwarders()
+            self._raise_owner_foreground_controls()
+            status = _wait_for_live2d_status(self._view, timeout_ms=30000)
+            _w("JS_STATUS: " + json.dumps(status, ensure_ascii=False))
+            if not status.get("done"):
+                raise RuntimeError(f"Live2D JS initialization failed: {status}")
+            self._initialized = True
+            _w("SUCCESS: view shown and model rendered")
+        except Exception:
+            _w("EXCEPTION:\n" + traceback.format_exc())
+            self.close()
+            raise
+
+    def close(self) -> None:
+        self._js_runner = None
+        if self._view:
+            self._view.close()
+            self._view = None
+
+    def capture_snapshot(self) -> Any | None:
+        if not self._view:
+            return None
+        try:
+            pixmap = self._view.grab()
+            is_null = getattr(pixmap, "isNull", None)
+            if callable(is_null) and is_null():
+                return None
+            return pixmap
+        except Exception:  # noqa: BLE001 - snapshot fallback must not break rendering
+            _w("EXCEPTION in capture_snapshot:\n" + traceback.format_exc())
+            return None
+
+    def _run_js(self, script: str) -> None:
+        """Submit JavaScript to the QWebEngine thread."""
+        if self._js_runner is not None:
+            self._js_runner.submit(script)
+
+    def _run_js_callback(self, script: str, callback: Any) -> None:
+        """Submit JavaScript and route the runJavaScript result to Python."""
+        if self._js_runner is not None:
+            self._js_runner.submit_with_callback(script, callback)
+
+    def show(self) -> None:
+        if self._view:
+            self._view.show()
+            self._raise_owner_foreground_controls()
+
+    def hide(self) -> None:
+        if self._view:
+            self._view.hide()
+
+    def look_at(self, x: float, y: float) -> None:
+        if self._view:
+            self._run_js(f"lookAt({x}, {y})")
+
+    def set_geometry(self, x: int, y: int, width: int, height: int, layout_height: int | None = None) -> None:
+        if self._view:
+            w = max(1, int(width))
+            h = max(1, int(height))
+            # Keep model scaling based on the full layout height even when the
+            # WebEngine view is clipped above the foreground controls.
+            lh = int(layout_height) if layout_height and int(layout_height) > 0 else h
+            geometry = (int(x), int(y), w, h, lh)
+            if getattr(self, "_last_geometry", None) == geometry:
+                return
+            self._last_geometry = geometry
+            self._view.setGeometry(int(x), int(y), w, h)
+            self._run_js(f"resizeLive2D({w}, {h}, {lh})")
+            self._run_js("forceRenderLive2D()")
+
+    def set_position(self, x: int, y: int) -> None:
+        if self._view:
+            self._view.move(int(x), int(y))
+
+    def set_scale(self, scale: float) -> None:
+        if not self._view:
+            return
+        next_scale = _normalize_model_scale(scale)
+        self._run_js(f"setUserScale({json.dumps(next_scale)})")
+        QTimer.singleShot(350, self._log_expression_debug)
+
+    def set_mode(self, mode: str) -> None:
+        if not self._view:
+            return
+        next_mode = _normalize_mode(mode)
+        self._run_js(f"setMode({json.dumps(next_mode)})")
+        QTimer.singleShot(350, self._log_expression_debug)
+
+    def stack_below(self, owner_window: Any, *, topmost: bool | None = None) -> None:
+        """Keep the independent Live2D overlay below the Sakura foreground controls."""
+        if not self._view:
+            return
+        try:
+            self._view.lower()
+            if owner_window is not None:
+                raise_owner = getattr(owner_window, "raise_", None)
+                if callable(raise_owner):
+                    raise_owner()
+        except Exception:  # noqa: BLE001 - z-order failure must not break rendering
+            _w("EXCEPTION in stack_below:\n" + traceback.format_exc())
+
+    def _raise_owner_foreground_controls(self) -> None:
+        owner = getattr(self._ctx, "owner_window", None)
+        raise_controls = getattr(owner, "_raise_foreground_controls", None)
+        if not callable(raise_controls):
+            return
+        try:
+            raise_controls()
+        except Exception:  # noqa: BLE001 - foreground controls are best-effort
+            _w("EXCEPTION in _raise_owner_foreground_controls:\n" + traceback.format_exc())
+
+    def set_expression(self, expression_name: str, weight: float = 1.0) -> None:
+        if self._view:
+            self._run_js(
+                f"setExpression({json.dumps(expression_name)}, {weight})"
+            )
+            QTimer.singleShot(350, self._log_expression_debug)
+
+    def play_motion(self, motion_name: str, loop: bool = False) -> None:
+        if self._view:
+            self._run_js(
+                f"playMotion({json.dumps(motion_name)}, {str(loop).lower()})"
+            )
+
+    def trigger_scene_action(self, kind: str, name: str | None = None) -> None:
+        if self._view:
+            self._run_js(
+                f"triggerLive2DSceneAction({json.dumps(kind)}, {json.dumps(name)})"
+            )
+
+    def handle_event(self, event_name: str, payload: dict[str, Any]) -> None:
+        if not self._view:
+            return
+        payload = payload or {}
+        if event_name in {"tts_started", "tts.started"}:
+            self._run_js("setSpeaking(true)")
+            self._dispatch_scene_event("tts.started", payload)
+            QTimer.singleShot(350, self._log_expression_debug)
+        elif event_name in {"tts_finished", "tts.finished"}:
+            self._run_js("setSpeaking(false)")
+            QTimer.singleShot(350, self._log_expression_debug)
+        elif event_name in {"llm_request_started", "llm.request.started"}:
+            self._run_js("setThinking(true)")
+            self._dispatch_scene_event("llm.request.started", payload)
+        elif event_name in {"llm_request_finished", "llm.request.finished", "llm.request.failed"}:
+            self._run_js("setThinking(false)")
+        elif event_name in {"pet_clicked", "pet.clicked"}:
+            self._run_js("triggerInteraction(\"pet_clicked\")")
+            self._dispatch_scene_event("pet.clicked", payload)
+
+    def _dispatch_scene_event(self, event_name: str, payload: dict[str, Any]) -> None:
+        self._run_js(
+            f"dispatchLive2DSceneEvent({json.dumps(event_name)}, {json.dumps(payload, ensure_ascii=False)})"
+        )
+
+    def _log_expression_debug(self) -> None:
+        if not self._view:
+            return
+
+        def got(value: Any) -> None:
+            try:
+                data = json.loads(value) if isinstance(value, str) and value else {"raw": value}
+            except Exception as exc:  # noqa: BLE001
+                data = {"parse_error": str(exc), "raw": value}
+            _w("JS_EXPRESSION_DEBUG: " + json.dumps(data, ensure_ascii=False))
+            debug_log("Live2DRenderer", "Live2D JS 琛ㄦ儏閬ユ祴", data)
+
+        self._run_js_callback("getExpressionDebug()", got)
+
+
+def _build_html(
+    model_path: Path,
+    vendor_dir: Path,
+    *,
+    mode: str = "half",
+    model_scale: float = 1.0,
+    half_scale: Any = 1.85,
+    full_scale: Any = 0.98,
+    resolution_scale: Any = 1.8,
+    max_resolution: Any = 4.5,
+    half_offset_y: Any = 0.0,
+    full_offset_y: Any = 0.01,
+    safe_reset_params: Any = None,
+    hidden_parts: Any = None,
+    hidden_drawables: Any = None,
+    disable_vendor_expressions: Any = False,
+    scene_actions: Any = None,
+) -> str:
+    model_url = QUrl.fromLocalFile(str(model_path)).toString()
+    vendor_v5_url = QUrl.fromLocalFile(str(_PLUGIN_DIR / "vendor_v5")).toString()
+    options = {
+        "mode": _normalize_mode(mode),
+        "userScale": _normalize_model_scale(model_scale),
+        "halfScale": _normalize_layout_scale(half_scale, 1.85),
+        "fullScale": _normalize_layout_scale(full_scale, 0.98),
+        "resolutionScale": _normalize_resolution_scale(resolution_scale),
+        "maxResolution": _normalize_max_resolution(max_resolution),
+        "halfOffsetY": _normalize_offset_ratio(half_offset_y, 0.0),
+        "fullOffsetY": _normalize_offset_ratio(full_offset_y, 0.01),
+        "safeResetParams": _normalize_safe_reset_params(safe_reset_params),
+        "hiddenParts": _normalize_string_list(hidden_parts),
+        "hiddenDrawables": _normalize_string_list(hidden_drawables),
+        "disableVendorExpressions": bool(disable_vendor_expressions),
+        "sceneActions": _normalize_scene_actions(scene_actions),
+    }
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+html, body {{ margin:0; width:100%; height:100%; overflow:hidden; background: transparent; }}
+canvas {{ display:block; width:100%; height:100%; }}
+</style>
+</head>
+<body>
+<canvas id="c" width="350" height="500"></canvas>
+<script>
+window.__sakuraLive2DStatus = {{ steps: [], errors: [] }};
+window.onerror = (m,s,l,c,e) => window.__sakuraLive2DStatus.errors.push(String(m) + ' @' + l + ':' + c);
+window.onunhandledrejection = e => window.__sakuraLive2DStatus.errors.push('unhandledrejection: ' + String(e.reason && (e.reason.stack || e.reason.message || e.reason)));
+</script>
+<script src="{vendor_v5_url}/live2dcubismcore.min.js"></script>
+<script src="{vendor_v5_url}/sakura-live2d-bundle.js"></script>
+<script>
+const W = window.innerWidth || 420, H = window.innerHeight || 570;
+window.SakuraLive2D.create(document.getElementById('c'), {json.dumps(model_url)}, W, H, {json.dumps(options)});
+var _LIVE2D_OPTIONS = {json.dumps(options)};
+var _SAFE_RESET_PARAMS = _LIVE2D_OPTIONS.safeResetParams || {{}};
+var _HIDDEN_PARTS = _LIVE2D_OPTIONS.hiddenParts || [];
+var _HIDDEN_DRAWABLES = _LIVE2D_OPTIONS.hiddenDrawables || [];
+var _DISABLE_VENDOR_EXPRESSIONS = !!_LIVE2D_OPTIONS.disableVendorExpressions;
+var _SCENE_ACTIONS = _LIVE2D_OPTIONS.sceneActions || {{}};
+var _SCENE_ACTION_OWNED_PARAMS = {{}};
+function lookAt(x, y) {{ if (window.__sakuraLive2D) window.__sakuraLive2D.lookAt(x, y); }}
+var _currentExpressionName = null;
+var _currentExpressionResolved = null;
+var _currentExpressionWeight = 1.0;
+var _currentExpressionUntil = 0;
+window.__sakuraExpressionDebug = {{
+  calls: [],
+  errors: [],
+  last: null,
+  params: {{}},
+  speaking: {{ active: false, mouthOpen: 0, thinking: false }}
+}};
+var _EXPRESSION_ALIASES = {{
+  '中性': '',
+  '站立待机': '',
+  '黑脸': '黑脸',
+  '不满': '黑脸',
+  '生气': '黑脸',
+  '愤怒': '黑脸',
+  '恼火': '黑脸',
+  '嫌弃': '黑脸',
+  '冷淡': '黑脸',
+  '脸红': '脸红',
+  '害羞': '脸红',
+  '请求': '脸红',
+  '羞涩': '脸红',
+  '紧张': '脸红',
+  '眼高光消失': '眼高光消失',
+  '困惑': '眼高光消失',
+  '疑惑': '眼高光消失',
+  '疑问': '眼高光消失',
+  '不解': '眼高光消失',
+  '哭': '哭',
+  '悲伤': '哭',
+  '伤心': '哭',
+  '难过': '哭',
+  '委屈': '哭',
+  '哭泣': '哭',
+  '爱心眼': '爱心眼',
+  '星星眼': '星星眼',
+  '眼冒星星': '星星眼',
+  '两眼放光': '星星眼',
+  '兴奋': '星星眼',
+  '开心': '爱心眼',
+  '喜欢': '爱心眼',
+  '期待': '星星眼',
+  '崇拜': '爱心眼',
+  '赞叹': '爱心眼',
+  '惊喜': '星星眼',
+  '惊讶': '爱心眼'
+}};
+var _EXPRESSION_PARAMS = {{
+  '黑脸': {{'Button1': 1.0}},
+  '脸红': {{'Button2': 1.0}},
+  '眼高光消失': {{'Button3': 1.0}},
+  '哭': {{'Button4': 1.0}},
+  '爱心眼': {{'Button7': 1.0}},
+  '星星眼': {{'Button7': 1.0, 'ParamEyeLOpen': 1.18, 'ParamEyeROpen': 1.18, 'ParamEyeExpression1': 1.0, 'ParamEyeExpression2': 1.0}}
+}};
+var _EXPRESSION_VENDOR_NAMES = {{
+  '黑脸': '黑脸',
+  '脸红': '脸红',
+  '眼高光消失': '眼高光消失',
+  '哭': '哭',
+  '爱心眼': '爱心眼',
+  '星星眼': '爱心眼'
+}};
+function _recordExpressionError(where, error) {{
+  var text = String(error && (error.stack || error.message || error) || error);
+  window.__sakuraExpressionDebug.errors.push({{ where: where, error: text, at: Date.now() }});
+  if (window.__sakuraExpressionDebug.errors.length > 20) window.__sakuraExpressionDebug.errors.shift();
+}}
+function _normalizeExpressionName(name) {{
+  var key = String(name || '').trim();
+  if (Object.prototype.hasOwnProperty.call(_EXPRESSION_ALIASES, key)) return _EXPRESSION_ALIASES[key];
+  return key;
+}}
+function _getCoreModel() {{
+  var l2d = window.__sakuraLive2D;
+  return l2d && l2d.model && l2d.model.internalModel && l2d.model.internalModel.coreModel;
+}}
+function _idText(id) {{
+  try {{
+    if (id == null) return '';
+    if (typeof id === 'string') return id;
+    if (typeof id.getString === 'function') {{
+      var value = id.getString();
+      if (value && typeof value.s === 'string') return value.s;
+      return String(value);
+    }}
+    if (typeof id.s === 'string') return id.s;
+    return String(id);
+  }} catch (error) {{
+    _recordExpressionError('id-text', error);
+    return '';
+  }}
+}}
+function _parameterIds(cm) {{
+  var ids = [];
+  try {{
+    if (!cm || typeof cm.getParameterCount !== 'function' || typeof cm.getParameterId !== 'function') return ids;
+    var count = cm.getParameterCount();
+    for (var i = 0; i < count; i++) ids.push(_idText(cm.getParameterId(i)));
+  }} catch (error) {{
+    _recordExpressionError('parameter-ids', error);
+  }}
+  return ids;
+}}
+function _paramSnapshot(cm, ids, id) {{
+  var index = ids.indexOf(id);
+  var item = {{ id: id, exists: index >= 0, value: null }};
+  try {{
+    if (index >= 0 && typeof cm.getParameterValueByIndex === 'function') {{
+      item.value = cm.getParameterValueByIndex(index);
+    }}
+  }} catch (error) {{
+    item.error = String(error && (error.message || error));
+  }}
+  return item;
+}}
+function _sampleParams(cm) {{
+  var ids = _parameterIds(cm);
+  var sampleIds = ['Button1', 'Button2', 'Button3', 'Button4', 'Button7', 'ParamMouthOpenY'];
+  var sample = {{}};
+  for (var i = 0; i < sampleIds.length; i++) sample[sampleIds[i]] = _paramSnapshot(cm, ids, sampleIds[i]);
+  return {{
+    count: ids.length,
+    firstIds: ids.slice(0, 80),
+    sample: sample
+  }};
+}}
+function _writeParam(cm, ids, id, value) {{
+  var before = _paramSnapshot(cm, ids, id);
+  var wrote = false;
+  try {{
+    wrote = _setParamByName(cm, ids, id, value);
+  }} catch (error) {{
+    before.error = String(error && (error.message || error));
+    _recordExpressionError('write-' + id, error);
+  }}
+  var after = _paramSnapshot(cm, ids, id);
+  return {{ id: id, exists: before.exists, wrote: wrote, before: before.value, after: after.value, value: value }};
+}}
+function _setParamByName(cm, ids, id, value) {{
+  var index = ids.indexOf(id);
+  if (index < 0 || typeof cm.setParameterValueByIndex !== 'function') return false;
+  cm.setParameterValueByIndex(index, value);
+  return true;
+}}
+function _rawCubismModel(cm) {{
+  try {{
+    if (cm && typeof cm.getModel === 'function') return cm.getModel();
+  }} catch (error) {{
+    _recordExpressionError('raw-cubism-model', error);
+  }}
+  return null;
+}}
+function _rawIdList(items) {{
+  var ids = [];
+  if (!items || !items.ids) return ids;
+  for (var i = 0; i < items.ids.length; i++) ids.push(_idText(items.ids[i]));
+  return ids;
+}}
+function _applyRenderGuards(cm, recompute) {{
+  if (!cm) return;
+  var ids = _parameterIds(cm);
+  var names = Object.keys(_SAFE_RESET_PARAMS || {{}});
+  for (var i = 0; i < names.length; i++) {{
+    if (_SCENE_ACTION_OWNED_PARAMS[names[i]]) continue;
+    var value = Number(_SAFE_RESET_PARAMS[names[i]]);
+    if (isFinite(value)) _setParamByName(cm, ids, names[i], value);
+  }}
+  if (recompute && typeof cm.update === 'function') {{
+    try {{
+      cm.update();
+    }} catch (error) {{
+      _recordExpressionError('guard-recompute', error);
+    }}
+  }}
+  var raw = _rawCubismModel(cm);
+  if (_HIDDEN_PARTS.length && typeof cm.getPartCount === 'function' && typeof cm.getPartId === 'function' && typeof cm.setPartOpacityByIndex === 'function') {{
+    for (var i = 0; i < cm.getPartCount(); i++) {{
+      if (_HIDDEN_PARTS.indexOf(_idText(cm.getPartId(i))) >= 0) cm.setPartOpacityByIndex(i, 0);
+    }}
+  }}
+  if (_HIDDEN_PARTS.length && raw && raw.parts && raw.parts.opacities) {{
+    var rawPartIds = _rawIdList(raw.parts);
+    for (var k = 0; k < rawPartIds.length; k++) {{
+      if (_HIDDEN_PARTS.indexOf(rawPartIds[k]) >= 0) raw.parts.opacities[k] = 0;
+    }}
+  }}
+  if (_HIDDEN_DRAWABLES.length && typeof cm.getDrawableCount === 'function' && typeof cm.getDrawableId === 'function' && typeof cm.setDrawableCulling === 'function') {{
+    for (var j = 0; j < cm.getDrawableCount(); j++) {{
+      if (_HIDDEN_DRAWABLES.indexOf(_idText(cm.getDrawableId(j))) >= 0) cm.setDrawableCulling(j, true);
+    }}
+  }}
+  if (_HIDDEN_DRAWABLES.length && raw && raw.drawables && raw.drawables.opacities) {{
+    var rawDrawableIds = _rawIdList(raw.drawables);
+    for (var j = 0; j < rawDrawableIds.length; j++) {{
+      if (_HIDDEN_DRAWABLES.indexOf(rawDrawableIds[j]) >= 0) raw.drawables.opacities[j] = 0;
+    }}
+  }}
+}}
+window.__sakuraApplyLive2DRenderGuards = _applyRenderGuards;
+function _installRenderGuards() {{
+  var l2d = window.__sakuraLive2D;
+  var internal = l2d && l2d.model && l2d.model.internalModel;
+  if (!internal || internal.__sakuraRenderGuardsInstalled) return false;
+  var originalUpdate = internal.update;
+  if (typeof originalUpdate !== 'function') return false;
+  internal.update = function() {{
+    var result = originalUpdate.apply(this, arguments);
+    _applyRenderGuards(this.coreModel, true);
+    return result;
+  }};
+  internal.__sakuraRenderGuardsInstalled = true;
+  _applyRenderGuards(internal.coreModel, true);
+  return true;
+}}
+function _applyExpressionParams(cm, name, weight) {{
+  var result = {{
+    requested: name,
+    resolved: _normalizeExpressionName(name),
+    targetButton: null,
+    targetParams: null,
+    writes: [],
+    sampleParams: null
+  }};
+  if (!cm || typeof cm.setParameterValueByIndex !== 'function') return result;
+  var ids = _parameterIds(cm);
+  var buttons = ['Button1', 'Button2', 'Button3', 'Button4', 'Button7'];
+  for (var i = 0; i < buttons.length; i++) result.writes.push(_writeParam(cm, ids, buttons[i], 0));
+  if (!result.resolved) {{
+    result.sampleParams = _sampleParams(cm);
+    return result;
+  }}
+  var params = _EXPRESSION_PARAMS[result.resolved] || null;
+  result.targetParams = params;
+  if (params) {{
+    var names = Object.keys(params);
+    for (var j = 0; j < names.length; j++) {{
+      var id = names[j];
+      if (!result.targetButton && id.indexOf('Button') === 0) result.targetButton = id;
+      result.writes.push(_writeParam(cm, ids, id, params[id] * (typeof weight === 'number' ? weight : 1.0)));
+    }}
+  }}
+  result.sampleParams = _sampleParams(cm);
+  return result;
+}}
+function setExpression(name, weight) {{
+  var call = {{
+    event: 'expression-telemetry',
+    requested: String(name || '').trim(),
+    resolved: null,
+    weight: typeof weight === 'number' ? weight : 1.0,
+    hasLive2D: !!window.__sakuraLive2D,
+    hasModel: false,
+    hasCoreModel: false,
+    vendorCalled: false,
+    vendorReturn: null,
+    buttonResult: null,
+    at: Date.now()
+  }};
+  var resolvedName = _normalizeExpressionName(name);
+  var vendorName = _EXPRESSION_VENDOR_NAMES[resolvedName] || resolvedName;
+  call.resolved = resolvedName;
+  call.vendorName = vendorName;
+  if (!window.__sakuraLive2D) {{
+    window.__sakuraExpressionDebug.last = call;
+    window.__sakuraExpressionDebug.calls.push(call);
+    return;
+  }}
+  try {{
+    if (_DISABLE_VENDOR_EXPRESSIONS) {{
+      call.vendorSkipped = true;
+    }} else if (vendorName) {{
+      call.vendorReturn = window.__sakuraLive2D.setExpression(vendorName);
+      call.vendorCalled = true;
+    }} else {{
+      var manager = window.__sakuraLive2D.model && window.__sakuraLive2D.model.internalModel && window.__sakuraLive2D.model.internalModel.motionManager && window.__sakuraLive2D.model.internalModel.motionManager.expressionManager;
+      if (manager && manager.resetExpression) manager.resetExpression();
+      call.vendorCalled = !!manager;
+    }}
+  }} catch(error) {{
+    call.vendorError = String(error && (error.message || error));
+    _recordExpressionError('vendor-setExpression', error);
+  }}
+  var l2d = window.__sakuraLive2D;
+  var cm = l2d.model && l2d.model.internalModel && l2d.model.internalModel.coreModel;
+  call.hasModel = !!(l2d && l2d.model);
+  call.hasCoreModel = !!cm;
+  _currentExpressionName = call.requested;
+  _currentExpressionResolved = resolvedName;
+  _currentExpressionWeight = call.weight;
+  _currentExpressionUntil = Date.now() + 9000;
+  call.buttonResult = _applyExpressionParams(cm, _currentExpressionResolved, _currentExpressionWeight);
+  _applyRenderGuards(cm, true);
+  window.__sakuraExpressionDebug.last = call;
+  window.__sakuraExpressionDebug.calls.push(call);
+  if (window.__sakuraExpressionDebug.calls.length > 12) window.__sakuraExpressionDebug.calls.shift();
+}}
+function getExpressionDebug() {{
+  var cm = _getCoreModel();
+  window.__sakuraExpressionDebug.params = _sampleParams(cm);
+  window.__sakuraExpressionDebug.layout = (window.__sakuraLive2DStatus && window.__sakuraLive2DStatus.layoutTelemetry) || null;
+  window.__sakuraExpressionDebug.speaking = {{
+    active: _speaking,
+    mouthOpen: _mouthOpen,
+    thinking: _thinking,
+    currentExpressionName: _currentExpressionName,
+    currentExpressionResolved: _currentExpressionResolved,
+    currentExpressionUntil: _currentExpressionUntil
+  }};
+  return JSON.stringify(window.__sakuraExpressionDebug);
+}}
+function playMotion(name, loop) {{ if (window.__sakuraLive2D) window.__sakuraLive2D.playMotion(name, loop); }}
+function resizeLive2D(w, h, layoutH) {{ if (window.__sakuraLive2D) window.__sakuraLive2D.resize(w || window.innerWidth || 420, h || window.innerHeight || 570, layoutH); }}
+function forceRenderLive2D() {{ if (window.__sakuraLive2D && typeof window.__sakuraLive2D.forceRender === 'function') window.__sakuraLive2D.forceRender(); }}
+function setUserScale(scale) {{
+  var next = Number(scale);
+  if (!isFinite(next) || next <= 0) next = 1.0;
+  next = Math.max(0.3, Math.min(3.0, next));
+  if (window.__sakuraLive2D && typeof window.__sakuraLive2D.setUserScale === 'function') {{
+    return window.__sakuraLive2D.setUserScale(next);
+  }}
+  return false;
+}}
+function setMode(mode) {{
+  if (window.__sakuraLive2D && typeof window.__sakuraLive2D.setMode === 'function') {{
+    return window.__sakuraLive2D.setMode(mode);
+  }}
+  return false;
+}}
+window.addEventListener('resize', () => {{
+  resizeLive2D(window.innerWidth || 420, window.innerHeight || 570);
+}});
+
+{_SCENE_ACTIONS_SCRIPT}
+
+// Rich idle and interaction layer.
+var _speaking = false;
+var _thinking = false;
+var _mouthOpen = 0;
+var _mouthTarget = 0;
+var _nextMouthTargetAt = 0;
+var _interactionUntil = 0;
+var _interactionKind = '';
+var _interactionPulse = 0;
+var _blinkUntil = 0;
+var _nextBlinkAt = Date.now() + 1800 + Math.random() * 1600;
+window.setSpeaking = function(v) {{ _speaking = !!v; if (!v) {{ _mouthTarget = 0; }} }};
+window.setThinking = function(v) {{ _thinking = !!v; }};
+function _clamp01(v) {{ return Math.max(0, Math.min(1, v)); }}
+function _easeOut(v) {{ v = _clamp01(v); return 1 - Math.pow(1 - v, 3); }}
+function triggerInteraction(kind) {{
+  _interactionKind = String(kind || 'pet_clicked');
+  _interactionUntil = Date.now() + 950;
+  _interactionPulse = 1.0;
+}}
+window.triggerInteraction = triggerInteraction;
+(function waitAndHookRichInteractionTicker() {{
+  var l2d = window.__sakuraLive2D;
+  if (!l2d || !l2d.app || !l2d.model) {{
+    setTimeout(waitAndHookRichInteractionTicker, 100);
+    return;
+  }}
+  _installRenderGuards();
+  _installSceneActionEventHandlers();
+  l2d.app.ticker.add(function() {{
+    var now = Date.now();
+    var t = now / 1000;
+    var cm = l2d.model.internalModel && l2d.model.internalModel.coreModel;
+    if (!cm || typeof cm.setParameterValueByIndex !== 'function') return;
+    var ids = _parameterIds(cm);
+    function hasP(n) {{ return ids.indexOf(n) >= 0; }}
+    function setP(n, v) {{ try {{ _setParamByName(cm, ids, n, v); }} catch(_) {{}} }}
+
+    if (now >= _nextBlinkAt && now > _blinkUntil) {{
+      _blinkUntil = now + 155;
+      _nextBlinkAt = now + 2400 + Math.random() * 2600;
+    }}
+    var blinkValue = 1.0;
+    if (now < _blinkUntil) {{
+      var blinkPhase = (now - (_blinkUntil - 155)) / 155;
+      blinkValue = 1.0 - Math.sin(_clamp01(blinkPhase) * Math.PI);
+    }}
+
+    var interaction = 0;
+    if (now < _interactionUntil) {{
+      interaction = _easeOut((_interactionUntil - now) / 950);
+      _interactionPulse = interaction;
+    }} else {{
+      _interactionPulse *= 0.86;
+      interaction = _interactionPulse;
+    }}
+
+    var gazeX = l2d.curX || 0;
+    var gazeY = l2d.curY || 0;
+    var idleX = Math.sin(t * 0.83) * 2.2 + Math.sin(t * 1.71) * 0.7;
+    var idleY = Math.cos(t * 0.62) * 1.5;
+    var bodyX = gazeX * 12 + idleX + interaction * 5.5;
+    var bodyY = -gazeY * 4 + idleY - interaction * 2.0;
+    var bodyZ = Math.sin(t * 0.91) * 2.2 + (_thinking ? Math.sin(t * 2.1) * 4.2 : 0) - interaction * 5.0;
+
+    setP('ParamBreath', Math.sin(t * 1.57) * 0.42 + 0.58);
+    setP('ParamAngleX', gazeX * 30 + idleX * 1.8 + interaction * 8.0);
+    setP('ParamAngleY', -gazeY * 24 + idleY * 2.0 - interaction * 4.0);
+    setP('ParamAngleZ', bodyZ);
+    setP('ParamBodyAngleX', bodyX);
+    setP('ParamBodyAngleY', bodyY);
+    setP('ParamBodyAngleZ', bodyZ);
+    setP('ParamEyeBallX', gazeX * 0.9 + interaction * 0.12);
+    setP('ParamEyeBallY', -gazeY * 0.75 - interaction * 0.08);
+    setP('ParamEyeLOpen', blinkValue);
+    setP('ParamEyeROpen', blinkValue);
+    setP('ParamHairFront', Math.sin(t * 1.26) * 3.5 + interaction * 5.0);
+    setP('ParamHairSide', Math.cos(t * 1.08) * 3.2 - interaction * 4.0);
+    setP('ParamHairBack', Math.sin(t * 0.96) * 2.8 + interaction * 3.5);
+    if (hasP('ParamCheek')) setP('ParamCheek', interaction * 0.75);
+
+    if (_speaking) {{
+      if (now >= _nextMouthTargetAt) {{
+        _mouthTarget = 0.10 + Math.random() * 0.34;
+        _nextMouthTargetAt = now + 300 + Math.random() * 380;
+      }}
+      _mouthOpen += (_mouthTarget - _mouthOpen) * 0.09;
+    }} else {{
+      _mouthOpen *= 0.78;
+    }}
+    setP('ParamMouthOpenY', Math.max(_mouthOpen, interaction * 0.08));
+    _applyRenderGuards(cm);
+  }});
+}})();
+</script>
+</body>
+</html>"""
+
+
+def _normalize_mode(value: Any) -> str:
+    mode = str(value or "half").strip().lower()
+    return mode if mode in {"full", "half"} else "half"
+
+
+def _geometry_close(
+    previous: tuple[int, int, int, int, int] | None,
+    current: tuple[int, int, int, int, int],
+) -> bool:
+    if previous is None:
+        return False
+    return all(
+        abs(int(left) - int(right)) <= _GEOMETRY_JITTER_PX
+        for left, right in zip(previous, current)
+    )
+
+
+def _normalize_model_scale(value: Any) -> float:
+    """Normalize user model scale."""
+    try:
+        scale = float(value)
+    except (TypeError, ValueError):
+        return 1.0
+    if scale <= 0:
+        return 1.0
+    return max(0.3, min(3.0, scale))
+
+
+def _normalize_layout_scale(value: Any, default: float) -> float:
+    """Normalize per-mode layout scale."""
+    try:
+        scale = float(value)
+    except (TypeError, ValueError):
+        return default
+    if scale <= 0:
+        return default
+    return max(0.2, min(4.0, scale))
+
+
+def _normalize_resolution_scale(value: Any) -> float:
+    """Normalize additional DPR scaling."""
+    try:
+        scale = float(value)
+    except (TypeError, ValueError):
+        return 1.8
+    if scale <= 0:
+        return 1.8
+    return max(1.0, min(3.0, scale))
+
+
+def _normalize_max_resolution(value: Any) -> float:
+    """Clamp WebGL canvas resolution."""
+    try:
+        scale = float(value)
+    except (TypeError, ValueError):
+        return 4.5
+    if scale <= 0:
+        return 4.5
+    return max(1.0, min(5.0, scale))
+
+
+def _normalize_offset_ratio(value: Any, default: float) -> float:
+    """Normalize model Y offset as a layout-height ratio."""
+    try:
+        offset = float(value)
+    except (TypeError, ValueError):
+        return default
+    return max(-1.0, min(1.0, offset))
+
+
+def _normalize_safe_reset_params(value: Any) -> dict[str, float]:
+    if not isinstance(value, dict):
+        return {}
+    normalized: dict[str, float] = {}
+    for key, raw in value.items():
+        name = str(key or "").strip()
+        if not name:
+            continue
+        try:
+            normalized[name] = float(raw)
+        except (TypeError, ValueError):
+            continue
+    return normalized
+
+
+def _normalize_scene_actions(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    normalized: dict[str, Any] = {
+        "enabled": bool(value.get("enabled", True)),
+        "idleIntervalMs": _normalize_positive_int(
+            value.get("idle_interval_ms", value.get("idleIntervalMs")),
+            18000,
+        ),
+        "layers": _normalize_scene_action_layers(value.get("layers")),
+        "transients": _normalize_scene_action_mapping(value.get("transients")),
+        "motions": _normalize_scene_motion_mapping(value.get("motions")),
+        "events": _normalize_scene_event_mapping(value.get("events")),
+        "idlePool": _normalize_scene_action_list(value.get("idle_pool", value.get("idlePool"))),
+    }
+    return normalized
+
+
+def _normalize_scene_action_layers(value: Any) -> dict[str, list[dict[str, Any]]]:
+    if not isinstance(value, dict):
+        return {}
+    result: dict[str, list[dict[str, Any]]] = {}
+    for raw_layer, raw_items in value.items():
+        layer = str(raw_layer or "").strip()
+        if not layer:
+            continue
+        items = raw_items if isinstance(raw_items, (list, tuple)) else [raw_items]
+        normalized_items = [
+            action
+            for action in (_normalize_param_action(item) for item in items)
+            if action is not None
+        ]
+        if normalized_items:
+            result[layer] = normalized_items
+    return result
+
+
+def _normalize_scene_action_mapping(value: Any) -> dict[str, dict[str, Any]]:
+    if not isinstance(value, dict):
+        return {}
+    result: dict[str, dict[str, Any]] = {}
+    for raw_id, raw_action in value.items():
+        action_id = str(raw_id or "").strip()
+        if not action_id:
+            continue
+        action_source = dict(raw_action) if isinstance(raw_action, dict) else raw_action
+        if isinstance(action_source, dict):
+            action_source.setdefault("id", action_id)
+        action = _normalize_param_action(action_source)
+        if action is not None:
+            action["id"] = action_id
+            result[action_id] = action
+    return result
+
+
+def _normalize_scene_motion_mapping(value: Any) -> dict[str, dict[str, Any]]:
+    if not isinstance(value, dict):
+        return {}
+    result: dict[str, dict[str, Any]] = {}
+    for raw_id, raw_motion in value.items():
+        motion_id = str(raw_id or "").strip()
+        if not motion_id or not isinstance(raw_motion, dict):
+            continue
+        motion = str(raw_motion.get("motion") or raw_motion.get("name") or "").strip()
+        if not motion:
+            continue
+        result[motion_id] = {
+            "id": motion_id,
+            "motion": motion,
+            "loop": bool(raw_motion.get("loop", False)),
+        }
+    return result
+
+
+def _normalize_scene_event_mapping(value: Any) -> dict[str, list[dict[str, Any]]]:
+    if not isinstance(value, dict):
+        return {}
+    result: dict[str, list[dict[str, Any]]] = {}
+    for raw_event, raw_actions in value.items():
+        event_name = str(raw_event or "").strip()
+        if not event_name:
+            continue
+        actions = _normalize_scene_action_list(raw_actions)
+        if actions:
+            result[event_name] = actions
+    return result
+
+
+def _normalize_scene_action_list(value: Any) -> list[dict[str, Any]]:
+    if isinstance(value, dict):
+        items = [value]
+    elif isinstance(value, (list, tuple)):
+        items = list(value)
+    else:
+        return []
+    actions: list[dict[str, Any]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        kind = str(item.get("kind") or "").strip()
+        if not kind:
+            continue
+        action: dict[str, Any] = {"kind": kind}
+        for key in (
+            "id",
+            "layer",
+            "name",
+            "params",
+            "reset_params",
+            "resetParams",
+            "duration_ms",
+            "durationMs",
+            "weight",
+        ):
+            if key in item:
+                action[_camel_scene_key(key)] = item[key]
+        if "params" in action:
+            action["params"] = _normalize_safe_reset_params(action["params"])
+        if "resetParams" in action:
+            action["resetParams"] = _normalize_safe_reset_params(action["resetParams"])
+        if "durationMs" in action:
+            action["durationMs"] = _normalize_positive_int(action["durationMs"], 0)
+        if "weight" in action:
+            action["weight"] = _normalize_weight(action["weight"])
+        actions.append(action)
+    return actions
+
+
+def _normalize_param_action(value: Any) -> dict[str, Any] | None:
+    if not isinstance(value, dict):
+        return None
+    action_id = str(value.get("id") or value.get("name") or "").strip()
+    params = _normalize_safe_reset_params(value.get("params"))
+    if not action_id or not params:
+        return None
+    action: dict[str, Any] = {
+        "id": action_id,
+        "params": params,
+    }
+    reset_params = _normalize_safe_reset_params(
+        value.get("reset_params", value.get("resetParams"))
+    )
+    if reset_params:
+        action["resetParams"] = reset_params
+    duration_ms = _normalize_positive_int(
+        value.get("duration_ms", value.get("durationMs")),
+        0,
+    )
+    if duration_ms:
+        action["durationMs"] = duration_ms
+    return action
+
+
+def _camel_scene_key(key: str) -> str:
+    if key == "reset_params":
+        return "resetParams"
+    if key == "duration_ms":
+        return "durationMs"
+    return key
+
+
+def _normalize_positive_int(value: Any, default: int) -> int:
+    try:
+        parsed = int(str(value).strip())
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed > 0 else default
+
+
+def _normalize_weight(value: Any) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return 1.0
+    return parsed if parsed > 0 else 1.0
+
+
+def _normalize_string_list(value: Any) -> list[str]:
+    if isinstance(value, str):
+        candidates = [value]
+    elif isinstance(value, (list, tuple, set)):
+        candidates = list(value)
+    else:
+        return []
+
+    result: list[str] = []
+    for item in candidates:
+        text = str(item or "").strip()
+        if text and text not in result:
+            result.append(text)
+    return result
+
+
+def _wait_for_live2d_status(view: Any, *, timeout_ms: int) -> dict[str, Any]:
+    loop = QEventLoop()
+    result: dict[str, Any] = {"done": False, "timeout": False}
+    deadline = QTimer()
+    deadline.setSingleShot(True)
+
+    def finish(value: dict[str, Any]) -> None:
+        nonlocal result
+        if loop.isRunning():
+            result = value
+            loop.quit()
+
+    def poll() -> None:
+        js = "JSON.stringify(window.__sakuraLive2DStatus || {missing:true})"
+
+        def got(value: Any) -> None:
+            try:
+                data = json.loads(value) if isinstance(value, str) and value else {"raw": value}
+            except Exception as exc:  # noqa: BLE001
+                data = {"parse_error": str(exc), "raw": value}
+            if data.get("done") or data.get("errors"):
+                finish(data)
+            else:
+                QTimer.singleShot(250, poll)
+
+        view.page().runJavaScript(js, got)
+
+    deadline.timeout.connect(lambda: finish({"done": False, "timeout": True}))
+    QTimer.singleShot(500, poll)
+    deadline.start(timeout_ms)
+    loop.exec()
+    return result
+
+
+class Live2DRendererPlugin(PluginBase):
+    plugin_id = "live2d_renderer"
+    plugin_version = "1.0.0"
+
+    def initialize(self, register: PluginCapabilityRegistry, context: PluginContext) -> None:
+        register.register_renderer(
+            RendererContribution(
+                renderer_type="live2d",
+                display_name="Live2D",
+                create=lambda ctx: Live2DRenderer(ctx),
+                plugin_id=self.plugin_id,
+                priority=50,
+            )
+        )
+

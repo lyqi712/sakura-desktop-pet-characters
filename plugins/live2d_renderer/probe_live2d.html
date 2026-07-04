@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+canvas { display: block; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+window.__live2dStatus = { steps: [], errors: [] };
+window.onerror = function(message, source, lineno, colno, error) {
+  window.__live2dStatus.errors.push(String(message) + ' @' + lineno + ':' + colno);
+};
+window.onunhandledrejection = function(event) {
+  window.__live2dStatus.errors.push('unhandledrejection: ' + String(event.reason && (event.reason.stack || event.reason.message || event.reason)));
+};
+function step(name, data) { window.__live2dStatus.steps.push({ name, data: data || null }); }
+</script>
+<script src="file:///D:/Sakura/plugins/live2d_renderer/vendor/pixi.min.js"></script>
+<script src="file:///D:/Sakura/plugins/live2d_renderer/vendor/pixi-unsafe-eval.min.js"></script>
+<script src="file:///D:/Sakura/plugins/live2d_renderer/vendor/live2dcubismcore.min.js"></script>
+<script src="file:///D:/Sakura/plugins/live2d_renderer/vendor/pixi-live2d-display.min.js"></script>
+<script>
+(async () => {
+  step('globals', {
+    hasPIXI: !!window.PIXI,
+    pixiVersion: window.PIXI && window.PIXI.VERSION,
+    hasPixiLive2D: !!(window.PIXI && window.PIXI.live2d),
+    hasLive2DModel: !!(window.PIXI && window.PIXI.live2d && window.PIXI.live2d.Live2DModel),
+    hasCore: !!window.Live2DCubismCore,
+  });
+  const app = new PIXI.Application({
+    view: document.getElementById('c'),
+    width: 350,
+    height: 500,
+    transparent: true,
+    backgroundAlpha: 0,
+  });
+  step('app-created', { renderer: app.renderer && app.renderer.type });
+  const model = await PIXI.live2d.Live2DModel.from("file:///D:/Sakura/data/live2d/chun/\u693f.model3.json");
+  step('model-loaded', {
+    width: model.internalModel && model.internalModel.originalWidth,
+    height: model.internalModel && model.internalModel.originalHeight,
+  });
+  app.stage.addChild(model);
+  model.anchor.set(0.5, 1.0);
+  model.x = 175;
+  model.y = 500;
+  const s = Math.min(350 / model.internalModel.originalWidth, 500 / model.internalModel.originalHeight) * 0.95;
+  model.scale.set(s);
+  await new Promise(resolve => setTimeout(resolve, 800));
+  const gl = app.renderer.gl;
+  const pixels = new Uint8Array(350 * 500 * 4);
+  gl.readPixels(0, 0, 350, 500, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+  let nonZeroAlpha = 0;
+  for (let i = 3; i < pixels.length; i += 4) { if (pixels[i] !== 0) nonZeroAlpha++; }
+  window.__live2dStatus.nonZeroAlpha = nonZeroAlpha;
+  window.__live2dStatus.done = true;
+  step('pixel-check', { nonZeroAlpha });
+})();
+</script>
+</body>
+</html>

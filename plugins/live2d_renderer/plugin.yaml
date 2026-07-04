@@ -1,0 +1,10 @@
+api_version: 1
+id: live2d_renderer
+name: Live2D Renderer
+description: 用 QWebEngineView + pixi-live2d-display 渲染 Live2D 模型，替代默认 PNG 立绘。
+version: 1.0.0
+entry: plugin:Live2DRendererPlugin
+enabled: true
+priority: 50
+permissions:
+  - renderer

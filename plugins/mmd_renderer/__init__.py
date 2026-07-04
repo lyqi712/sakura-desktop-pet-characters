@@ -1,0 +1,2 @@
+"""Sakura MMD renderer plugin."""
+

@@ -1,0 +1,42 @@
+{
+  "attempt": 9,
+  "status": {
+    "steps": [
+      {
+        "name": "bundle-globals",
+        "data": {
+          "hasApplication": true,
+          "hasSound": true,
+          "hasModel": true,
+          "hasPlugin": true,
+          "hasConfigure": true,
+          "hasCore": true
+        }
+      },
+      {
+        "name": "app-created",
+        "data": {
+          "w": 350,
+          "h": 500,
+          "renderer": "webgl"
+        }
+      },
+      {
+        "name": "model-loaded",
+        "data": {
+          "width": 2490.1339721679688,
+          "height": 5762.586975097656
+        }
+      },
+      {
+        "name": "pixel-check",
+        "data": {
+          "nonZeroAlpha": 27842
+        }
+      }
+    ],
+    "errors": [],
+    "nonZeroAlpha": 27842,
+    "done": true
+  }
+}

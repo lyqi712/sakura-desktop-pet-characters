@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}canvas{display:block}</style></head>
+<body>
+<canvas id="c" width="350" height="500"></canvas>
+<script>
+window.__live2dStatus = { steps: [], errors: [] };
+window.onerror = (m,s,l,c,e) => window.__live2dStatus.errors.push(String(m) + ' @' + l + ':' + c);
+window.onunhandledrejection = e => window.__live2dStatus.errors.push('unhandledrejection: ' + String(e.reason && (e.reason.stack || e.reason.message || e.reason)));
+</script>
+<script src="file:///D:/Sakura/plugins/live2d_renderer/vendor_v5/live2dcubismcore.min.js"></script>
+<script src="file:///D:/Sakura/plugins/live2d_renderer/vendor_v5/probe-bundle.js"></script>
+<script>
+window.__runLive2DProbe(document.getElementById('c'), "file:///D:/Sakura/data/live2d/chun/\u693f.model3.json");
+</script>
+</body></html>

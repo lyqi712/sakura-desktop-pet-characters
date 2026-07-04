@@ -1,0 +1,11 @@
+id: mmd_renderer
+name: MMD Renderer
+version: 1.0.0
+description: Render PMX/MMD characters in a transparent Sakura desktop overlay.
+entry: plugin:MMDRendererPlugin
+api_version: 1
+enabled: true
+required: false
+priority: 60
+permissions:
+  - renderer

@@ -1,0 +1,405 @@
+from __future__ import annotations
+
+import json
+import traceback
+import datetime
+from pathlib import Path
+from typing import Any
+
+from PySide6.QtCore import QEvent, QEventLoop, QPoint, QTimer, QUrl, Qt
+
+from app.plugins import PluginBase, PluginCapabilityRegistry, PluginContext
+from app.plugins.models import RendererContribution, RendererCreateContext
+from app.renderers.base import CharacterRenderer
+
+
+_PLUGIN_DIR = Path(__file__).parent
+_LOG = _PLUGIN_DIR / "init_debug.log"
+
+
+def _w(msg: str) -> None:
+    with _LOG.open("a", encoding="utf-8") as f:
+        f.write(f"[{datetime.datetime.now()}] {msg}\n")
+
+
+class Live2DRenderer(CharacterRenderer):
+    renderer_name = "live2d"
+
+    def __init__(self, ctx: RendererCreateContext) -> None:
+        self._ctx = ctx
+        self._view: Any | None = None
+        self._initialized = False
+        self._mode = "half"
+
+    @property
+    def replaces_default_portrait(self) -> bool:
+        return self._initialized and self._view is not None
+
+    def is_available(self) -> bool:
+        try:
+            from PySide6.QtWebEngineWidgets import QWebEngineView  # noqa: F401
+            return True
+        except ImportError:
+            return False
+
+    def initialize(self, app_context: dict[str, Any] | None = None) -> None:
+        try:
+            cfg = self._ctx.renderer_config or {}
+            self._mode = _normalize_mode(cfg.get("mode"))
+            _w(f"initialize called: cfg={cfg}")
+            _w(f"package_dir={self._ctx.package_dir}")
+
+            # 优先读 model_dir（支持绝对路径和相对路径）
+            model_dir_str = cfg.get("model_dir", "")
+            if model_dir_str:
+                model_dir = Path(model_dir_str)
+                if not model_dir.is_absolute():
+                    model_dir = (self._ctx.package_dir / model_dir).resolve()
+            else:
+                model_dir = self._ctx.package_dir
+
+            model_name = cfg.get("model", "")
+            model_path = (model_dir / model_name) if model_name else None
+            _w(f"model_dir={model_dir} exists={model_dir.exists()}")
+            _w(f"model_path={model_path} exists={model_path.exists() if model_path else 'N/A'}")
+
+            if model_path is None or not model_path.exists():
+                for search_root in (model_dir, self._ctx.package_dir):
+                    found = list(search_root.rglob("*.model3.json"))
+                    if found:
+                        model_path = found[0]
+                        _w(f"fallback found: {model_path}")
+                        break
+
+            if model_path is None or not model_path.exists():
+                _w("ABORT: no model3.json found")
+                raise FileNotFoundError("Live2D model3.json not found")
+
+            vendor_dir = _PLUGIN_DIR / "vendor"
+            html = _build_html(model_path, vendor_dir, mode=self._mode, model_scale=cfg.get("model_scale", 1.0))
+
+            parent = self._ctx.owner_window
+            from PySide6.QtWebEngineWidgets import QWebEngineView
+
+            class DraggableLive2DView(QWebEngineView):
+                def __init__(self, parent_widget: Any, owner_window: Any) -> None:
+                    super().__init__(parent_widget)
+                    self._owner_window = owner_window
+                    self._event_filters_installed = False
+                    self.setContextMenuPolicy(Qt.ContextMenuPolicy.DefaultContextMenu)
+
+                def install_mouse_forwarders(self) -> None:
+                    if self._event_filters_installed:
+                        return
+                    self.installEventFilter(self)
+                    for child in self.findChildren(object):
+                        install = getattr(child, "installEventFilter", None)
+                        if callable(install):
+                            install(self)
+                    self._event_filters_installed = True
+
+                def eventFilter(self, watched: Any, event: Any) -> bool:  # noqa: N802
+                    event_type = event.type()
+                    if event_type == QEvent.Type.ContextMenu:
+                        return self._open_owner_menu(event)
+                    if event_type == QEvent.Type.MouseButtonPress:
+                        return self._forward_mouse_press(event, watched)
+                    if event_type == QEvent.Type.MouseMove:
+                        return self._forward_mouse_move(event)
+                    if event_type == QEvent.Type.MouseButtonRelease:
+                        return self._forward_mouse_release(event)
+                    return super().eventFilter(watched, event)
+
+                def contextMenuEvent(self, event: Any) -> None:  # noqa: N802
+                    if self._open_owner_menu(event):
+                        return
+                    super().contextMenuEvent(event)
+
+                def mousePressEvent(self, event: Any) -> None:  # noqa: N802
+                    if self._forward_mouse_press(event, self):
+                        return
+                    super().mousePressEvent(event)
+
+                def mouseMoveEvent(self, event: Any) -> None:  # noqa: N802
+                    if self._forward_mouse_move(event):
+                        return
+                    super().mouseMoveEvent(event)
+
+                def mouseReleaseEvent(self, event: Any) -> None:  # noqa: N802
+                    if self._forward_mouse_release(event):
+                        return
+                    super().mouseReleaseEvent(event)
+
+                def _open_owner_menu(self, event: Any) -> bool:
+                    menu_handler = getattr(self._owner_window, "_show_context_menu", None)
+                    if not callable(menu_handler):
+                        return False
+                    menu_handler(QPoint(0, 0))
+                    event.accept()
+                    return True
+
+                def _forward_mouse_press(self, event: Any, source_widget: Any) -> bool:
+                    if event.button() == Qt.MouseButton.RightButton:
+                        return self._open_owner_menu(event)
+                    handler = getattr(self._owner_window, "_handle_mouse_press", None)
+                    return bool(callable(handler) and handler(event, source_widget))
+
+                def _forward_mouse_move(self, event: Any) -> bool:
+                    handler = getattr(self._owner_window, "_handle_mouse_move", None)
+                    return bool(callable(handler) and handler(event))
+
+                def _forward_mouse_release(self, event: Any) -> bool:
+                    handler = getattr(self._owner_window, "_handle_mouse_release", None)
+                    return bool(callable(handler) and handler(event))
+
+            self._view = DraggableLive2DView(parent, parent)
+            self._view.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+            self._view.page().setBackgroundColor(Qt.GlobalColor.transparent)
+            # WindowStaysOnTopHint 让 Live2D overlay 始终浮在普通桌面窗口之上（不被遮挡）。
+            # 主窗口本身也有 WindowStaysOnTopHint，两者都是 topmost；
+            # stack_below() 在每次几何同步时 lower() 本 view 再 raise_() 主窗口，
+            # 保证输入栏/发送按钮在 Live2D overlay 之上可点击。
+            self._view.setWindowFlags(
+                Qt.WindowType.FramelessWindowHint |
+                Qt.WindowType.Tool |
+                Qt.WindowType.WindowStaysOnTopHint
+            )
+
+            tmp = _PLUGIN_DIR / "live2d_view.html"
+            tmp.write_text(html, encoding="utf-8")
+            self._view.load(QUrl.fromLocalFile(str(tmp)))
+            self._view.resize(420, 570)
+            self._view.show()
+            self._view.install_mouse_forwarders()
+            status = _wait_for_live2d_status(self._view, timeout_ms=30000)
+            _w("JS_STATUS: " + json.dumps(status, ensure_ascii=False))
+            if not status.get("done"):
+                raise RuntimeError(f"Live2D JS initialization failed: {status}")
+            self._initialized = True
+            _w("SUCCESS: view shown and model rendered")
+        except Exception:
+            _w("EXCEPTION:\n" + traceback.format_exc())
+            self.close()
+            raise
+
+    def close(self) -> None:
+        if self._view:
+            self._view.close()
+            self._view = None
+
+    def show(self) -> None:
+        if self._view:
+            self._view.show()
+
+    def hide(self) -> None:
+        if self._view:
+            self._view.hide()
+
+    def look_at(self, x: float, y: float) -> None:
+        if self._view:
+            self._view.page().runJavaScript(f"lookAt({x}, {y})")
+
+    def set_geometry(self, x: int, y: int, width: int, height: int, layout_height: int | None = None) -> None:
+        if self._view:
+            w = max(1, int(width))
+            h = max(1, int(height))
+            self._view.setGeometry(int(x), int(y), w, h)
+            # layout_height = 立绘完整布局高度（未裁切）。canvas 高度 h 可能被裁短以避开
+            # 输入栏，但模型缩放仍按完整高度算，避免裁短后角色跟着缩小。
+            lh = int(layout_height) if layout_height and int(layout_height) > 0 else h
+            self._view.page().runJavaScript(f"resizeLive2D({w}, {h}, {lh})")
+
+    def set_position(self, x: int, y: int) -> None:
+        if self._view:
+            self._view.move(int(x), int(y))
+
+    def stack_below(self, owner_window: Any, *, topmost: bool | None = None) -> None:
+        """把 Live2D overlay 压到主窗口之下，避免遮挡主窗口里的输入框/发送按钮。
+
+        overlay 与主窗口不是父子窗口，Windows 下 z-order 需显式处理：
+        先 lower() 让自己沉底，再把主窗口 raise_()，确保输入栏可点击。
+        topmost 参数为兼容 manager 接口，这里恒不置顶（置顶会重新盖住输入栏）。
+        """
+        if not self._view:
+            return
+        try:
+            self._view.lower()
+            if owner_window is not None:
+                raise_owner = getattr(owner_window, "raise_", None)
+                if callable(raise_owner):
+                    raise_owner()
+        except Exception:  # noqa: BLE001 — z-order 调整失败不得影响渲染
+            _w("EXCEPTION in stack_below:\n" + traceback.format_exc())
+
+    def set_expression(self, expression_name: str, weight: float = 1.0) -> None:
+        if self._view:
+            self._view.page().runJavaScript(
+                f"setExpression({json.dumps(expression_name)}, {weight})"
+            )
+
+    def play_motion(self, motion_name: str, loop: bool = False) -> None:
+        if self._view:
+            self._view.page().runJavaScript(
+                f"playMotion({json.dumps(motion_name)}, {str(loop).lower()})"
+            )
+
+    def handle_event(self, event_name: str, payload: dict[str, Any]) -> None:
+        if not self._view:
+            return
+        if event_name in {"tts_started", "tts.started"}:
+            # 开始说话：激活口型动画
+            self._view.page().runJavaScript("setSpeaking(true)")
+        elif event_name in {"tts_finished", "tts.finished"}:
+            # 说话结束：关闭口型
+            self._view.page().runJavaScript("setSpeaking(false)")
+        elif event_name in {"llm_request_started", "llm.request.started"}:
+            # 思考中：轻微摇头
+            self._view.page().runJavaScript("setThinking(true)")
+        elif event_name in {"llm_request_finished", "llm.request.finished", "llm.request.failed"}:
+            self._view.page().runJavaScript("setThinking(false)")
+
+
+def _build_html(model_path: Path, vendor_dir: Path, *, mode: str = "half", model_scale: float = 1.0) -> str:
+    model_url = QUrl.fromLocalFile(str(model_path)).toString()
+    vendor_v5_url = QUrl.fromLocalFile(str(_PLUGIN_DIR / "vendor_v5")).toString()
+    options = {"mode": _normalize_mode(mode), "userScale": _normalize_model_scale(model_scale)}
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+html, body {{ margin:0; width:100%; height:100%; overflow:hidden; background: transparent; }}
+canvas {{ display:block; width:100%; height:100%; }}
+</style>
+</head>
+<body>
+<canvas id="c" width="350" height="500"></canvas>
+<script>
+window.__sakuraLive2DStatus = {{ steps: [], errors: [] }};
+window.onerror = (m,s,l,c,e) => window.__sakuraLive2DStatus.errors.push(String(m) + ' @' + l + ':' + c);
+window.onunhandledrejection = e => window.__sakuraLive2DStatus.errors.push('unhandledrejection: ' + String(e.reason && (e.reason.stack || e.reason.message || e.reason)));
+</script>
+<script src="{vendor_v5_url}/live2dcubismcore.min.js"></script>
+<script src="{vendor_v5_url}/sakura-live2d-bundle.js"></script>
+<script>
+const W = window.innerWidth || 420, H = window.innerHeight || 570;
+window.SakuraLive2D.create(document.getElementById('c'), {json.dumps(model_url)}, W, H, {json.dumps(options)});
+function lookAt(x, y) {{ if (window.__sakuraLive2D) window.__sakuraLive2D.lookAt(x, y); }}
+function setExpression(name, weight) {{ if (window.__sakuraLive2D) window.__sakuraLive2D.setExpression(name, weight); }}
+function playMotion(name, loop) {{ if (window.__sakuraLive2D) window.__sakuraLive2D.playMotion(name, loop); }}
+function resizeLive2D(w, h, layoutH) {{ if (window.__sakuraLive2D) window.__sakuraLive2D.resize(w || window.innerWidth || 420, h || window.innerHeight || 570, layoutH); }}
+window.addEventListener('resize', () => {{
+  resizeLive2D(window.innerWidth || 420, window.innerHeight || 570);
+}});
+
+// ── 动画系统（挂 PIXI ticker，避免与 bundle ticker 冲突）──
+// setSpeaking/setThinking 提前定义到 window，保证 Python 侧 runJavaScript 调用时始终可用。
+var _speaking = false;
+var _thinking = false;
+var _mouthOpen = 0;
+window.setSpeaking = function(v) {{ _speaking = !!v; if (!v) _mouthOpen = 0; }};
+window.setThinking = function(v) {{ _thinking = !!v; }};
+
+// 等待 SakuraLive2D 模型加载完毕后，把动画回调挂入 PIXI ticker。
+// PIXI ticker FIFO：bundle 的 ticker.add 先注册，我们的后注册 → 我们的写入最后执行，永远胜出。
+(function waitAndHookTicker() {{
+  var l2d = window.__sakuraLive2D;
+  if (!l2d || !l2d.app || !l2d.model) {{
+    setTimeout(waitAndHookTicker, 100);
+    return;
+  }}
+  l2d.app.ticker.add(function() {{
+    var t = Date.now() / 1000;
+    var cm = l2d.model.internalModel && l2d.model.internalModel.coreModel;
+    if (!cm || !cm.setParameterValueById) return;
+    function setP(n, v) {{ try {{ cm.setParameterValueById(n, v); }} catch(_) {{}} }}
+
+    // 1. 呼吸（约4秒周期）
+    setP('ParamBreath', Math.sin(t * 1.57) * 0.5 + 0.5);
+
+    // 2. 身体微摇：叠加在 bundle ticker 写入的 gaze 值之上（l2d.curX 是视线平滑值）
+    var gazeBodyX = (l2d.curX || 0) * 10;
+    setP('ParamBodyAngleX', gazeBodyX + Math.sin(t * 1.05) * 2.5);
+    setP('ParamBodyAngleY', Math.cos(t * 0.7) * 1.2);
+
+    // 3. 说话口型（随机波动，lerp 平滑）
+    if (_speaking) {{
+      _mouthOpen += (0.3 + Math.random() * 0.7 - _mouthOpen) * 0.35;
+    }} else {{
+      _mouthOpen *= 0.75;
+    }}
+    setP('ParamMouthOpenY', _mouthOpen);
+
+    // 4. 思考：头部左右轻摆（3秒周期）
+    setP('ParamAngleZ', _thinking ? Math.sin(t * 2.1) * 4 : 0);
+  }});
+}})();
+</script>
+</body>
+</html>"""
+
+
+def _normalize_mode(value: Any) -> str:
+    mode = str(value or "half").strip().lower()
+    return mode if mode in {"full", "half"} else "half"
+
+
+def _normalize_model_scale(value: Any) -> float:
+    """角色整体大小倍率，限制在 [0.3, 3.0] 防止误填导致角色消失或撑爆。"""
+    try:
+        scale = float(value)
+    except (TypeError, ValueError):
+        return 1.0
+    if scale <= 0:
+        return 1.0
+    return max(0.3, min(3.0, scale))
+
+
+def _wait_for_live2d_status(view: Any, *, timeout_ms: int) -> dict[str, Any]:
+    loop = QEventLoop()
+    result: dict[str, Any] = {"done": False, "timeout": False}
+    deadline = QTimer()
+    deadline.setSingleShot(True)
+
+    def finish(value: dict[str, Any]) -> None:
+        nonlocal result
+        if loop.isRunning():
+            result = value
+            loop.quit()
+
+    def poll() -> None:
+        js = "JSON.stringify(window.__sakuraLive2DStatus || {missing:true})"
+
+        def got(value: Any) -> None:
+            try:
+                data = json.loads(value) if isinstance(value, str) and value else {"raw": value}
+            except Exception as exc:  # noqa: BLE001
+                data = {"parse_error": str(exc), "raw": value}
+            if data.get("done") or data.get("errors"):
+                finish(data)
+            else:
+                QTimer.singleShot(250, poll)
+
+        view.page().runJavaScript(js, got)
+
+    deadline.timeout.connect(lambda: finish({"done": False, "timeout": True}))
+    QTimer.singleShot(500, poll)
+    deadline.start(timeout_ms)
+    loop.exec()
+    return result
+
+
+class Live2DRendererPlugin(PluginBase):
+    plugin_id = "live2d_renderer"
+    plugin_version = "1.0.0"
+
+    def initialize(self, register: PluginCapabilityRegistry, context: PluginContext) -> None:
+        register.register_renderer(
+            RendererContribution(
+                renderer_type="live2d",
+                display_name="Live2D",
+                create=lambda ctx: Live2DRenderer(ctx),
+                plugin_id=self.plugin_id,
+                priority=50,
+            )
+        )

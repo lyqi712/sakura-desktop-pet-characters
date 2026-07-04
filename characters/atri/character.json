@@ -1,0 +1,305 @@
+{
+  "id": "atri",
+  "display_name": "亚托莉",
+  "initial_message": "您呼唤我了吗？如果有希望我做的事，请尽管说。",
+  "card": "card.md",
+  "portrait": {
+    "default": "PLACEHOLDER_see_README.jpg",
+    "_note": "占位符文件名。需要用户自行准备头像图片，改名为 portrait_default.jpg 并放入当前目录后生效。",
+    "expressions": {}
+  },
+  "theme": {
+    "primary_color": "#4f8fb8",
+    "primary_hover_color": "#397aa3",
+    "accent_color": "#e5a3b7",
+    "text_color": "#1f3140",
+    "secondary_text_color": "#416273",
+    "muted_text_color": "#6d8291",
+    "page_background_color": "#f4fbff",
+    "panel_background_color": "#e8f5fb",
+    "input_background_color": "#ffffff",
+    "bubble_background_color": "#e9f6fb",
+    "border_color": "#a9d4e6",
+    "source": "package"
+  },
+  "reply": {
+    "tones": [
+      "中性",
+      "开心",
+      "害羞",
+      "请求",
+      "困惑",
+      "惊讶",
+      "认真",
+      "低落"
+    ]
+  },
+  "language_policy": {
+    "mode": "bilingual_segments",
+    "text_lang": "zh",
+    "voice_lang": "ja",
+    "disallowed_langs": ["en"],
+    "note": "回复必须是 JSON segments，每段含 ja（自然日文台词，TTS 只朗读 ja）与 zh（自然中文翻译，界面显示 zh）。禁止把中文写进 ja、把日文解释塞进 zh；禁止英文与其他语言混入任一字段。"
+  },
+  "renderer": {
+    "type": "live2d",
+    "model": "atri_8.model3.json",
+    "model_dir": "live2d",
+    "_model_dir_note": "本仓库未附带 Live2D 模型资源（提取自游戏客户端，存在版权/再配布风险）。请自行获取《ATRI -My Dear Moments-》相关 Live2D 模型，放入 characters/atri/live2d/ 目录后生效。",
+    "fallback": "hidden",
+    "mode": "half",
+    "model_scale": 1.0,
+    "half_scale": 1.0,
+    "full_scale": 0.82,
+    "resolution_scale": 2.5,
+    "max_resolution": 5.0,
+    "half_offset_y": -0.02,
+    "full_offset_y": -0.04,
+    "safe_reset_params": {
+      "Param31": 0,
+      "Param36": 0,
+      "Param22": 0,
+      "Param21": 0,
+      "Param10": 0
+    },
+    "hidden_parts": [
+      "Part5"
+    ],
+    "hidden_drawables": [
+      "Square2048"
+    ],
+    "disable_vendor_expressions": true,
+    "scene_actions": {
+      "enabled": true,
+      "idle_interval_ms": 60000,
+      "layers": {
+        "outfit": [
+          {
+            "id": "sleepwear",
+            "label": "睡衣",
+            "params": {
+              "Param18": 30
+            }
+          },
+          {
+            "id": "swimsuit",
+            "label": "泳装",
+            "params": {
+              "Param17": 30
+            }
+          },
+          {
+            "id": "pumpkin_pants",
+            "label": "南瓜裤",
+            "params": {
+              "Param9": 30
+            }
+          }
+        ],
+        "shoes": [
+          {
+            "id": "sandals",
+            "label": "凉鞋",
+            "params": {
+              "Param19": 30
+            }
+          },
+          {
+            "id": "leather_shoes",
+            "label": "皮鞋",
+            "params": {
+              "Param20": 30
+            }
+          }
+        ],
+        "prop": [
+          {
+            "id": "bird",
+            "label": "小鸟",
+            "params": {
+              "Param37": 30
+            }
+          },
+          {
+            "id": "kani",
+            "label": "螃蟹",
+            "params": {
+              "Param38": 30
+            }
+          },
+          {
+            "id": "pillow",
+            "label": "抱枕",
+            "params": {
+              "Param39": 30
+            }
+          }
+        ]
+      },
+      "transients": {
+        "blush": {
+          "label": "脸红",
+          "params": {
+            "ParamCheek": 1
+          },
+          "duration_ms": 1800
+        },
+        "emotion_happy": {
+          "label": "开心",
+          "params": {
+            "ParamEyeLSmile": 1.0,
+            "ParamEyeRSmile": 1.0,
+            "ParamMouthForm": 1.0,
+            "ParamBrowLForm": 0.6,
+            "ParamBrowRForm": 0.6
+          },
+          "duration_ms": 2800
+        },
+        "emotion_shy": {
+          "label": "害羞",
+          "params": {
+            "ParamCheek": 1,
+            "ParamEyeLSmile": 0.6,
+            "ParamEyeRSmile": 0.6,
+            "ParamMouthForm": 0.4,
+            "ParamBrowLY": -0.3,
+            "ParamBrowRY": -0.3
+          },
+          "duration_ms": 2800
+        },
+        "emotion_confused": {
+          "label": "困惑",
+          "params": {
+            "ParamBrowLForm": -0.6,
+            "ParamBrowRForm": 0.5,
+            "ParamBrowLAngle": -0.5,
+            "ParamBrowRAngle": 0.3,
+            "ParamMouthForm": -0.2
+          },
+          "duration_ms": 2800
+        },
+        "emotion_surprise": {
+          "label": "惊讶",
+          "params": {
+            "ParamBrowLY": 1.0,
+            "ParamBrowRY": 1.0,
+            "ParamBrowLForm": 0.8,
+            "ParamBrowRForm": 0.8,
+            "ParamMouthForm": 0.0
+          },
+          "duration_ms": 2800
+        },
+        "emotion_serious": {
+          "label": "认真",
+          "params": {
+            "ParamBrowLForm": -0.7,
+            "ParamBrowRForm": -0.7,
+            "ParamBrowLAngle": -0.5,
+            "ParamBrowRAngle": -0.5,
+            "ParamMouthForm": -0.3
+          },
+          "duration_ms": 2800
+        },
+        "emotion_sad": {
+          "label": "低落",
+          "params": {
+            "ParamBrowLForm": -0.8,
+            "ParamBrowRForm": -0.8,
+            "ParamBrowLY": -0.6,
+            "ParamBrowRY": -0.6,
+            "ParamMouthForm": -0.9
+          },
+          "duration_ms": 3000
+        }
+      },
+      "tone_expressions": {
+        "开心": "emotion_happy",
+        "喜欢": "emotion_happy",
+        "期待": "emotion_happy",
+        "兴奋": "emotion_happy",
+        "惊喜": "emotion_surprise",
+        "害羞": "emotion_shy",
+        "请求": "emotion_shy",
+        "羞涩": "emotion_shy",
+        "紧张": "emotion_shy",
+        "困惑": "emotion_confused",
+        "疑惑": "emotion_confused",
+        "疑问": "emotion_confused",
+        "不解": "emotion_confused",
+        "惊讶": "emotion_surprise",
+        "认真": "emotion_serious",
+        "严肃": "emotion_serious",
+        "低落": "emotion_sad",
+        "悲伤": "emotion_sad",
+        "伤心": "emotion_sad",
+        "难过": "emotion_sad",
+        "委屈": "emotion_sad"
+      },
+      "motions": {
+        "decorate_left": {
+          "label": "左侧装饰动作",
+          "motion": "DecorateLeft",
+          "loop": false
+        },
+        "decorate_right": {
+          "label": "右侧装饰动作",
+          "motion": "DecorateRight",
+          "loop": false
+        }
+      },
+      "events": {
+        "tts.started": [
+          {
+            "kind": "transient",
+            "id": "blush",
+            "weight": 1
+          }
+        ],
+        "llm.request.started": [
+          {
+            "kind": "motion",
+            "id": "decorate_left",
+            "weight": 1
+          }
+        ],
+        "pet.clicked": [
+          {
+            "kind": "transient",
+            "id": "blush",
+            "weight": 1
+          },
+          {
+            "kind": "motion",
+            "id": "decorate_right",
+            "weight": 1
+          }
+        ]
+      },
+      "idle_pool": [
+        {
+          "kind": "transient",
+          "id": "blush",
+          "weight": 2
+        },
+        {
+          "kind": "motion",
+          "id": "decorate_left",
+          "weight": 1
+        },
+        {
+          "kind": "motion",
+          "id": "decorate_right",
+          "weight": 1
+        }
+      ]
+    }
+  },
+  "voice": {
+    "gpt_model": "",
+    "sovits_model": "",
+    "tone_refs": "PLACEHOLDER_see_README.txt",
+    "_note": "tone_refs 为占位符。本仓库未附带日文语音参考音频与 GPT-SoVITS 权重（提取自游戏客户端，存在版权/再配布风险）。请自行准备 GPT-SoVITS 训练权重和参考音频后，填入 gpt_model/sovits_model 实际路径，并准备 tone_refs.txt（格式见 README）及其引用的参考 wav。",
+    "ref_lang": "ja",
+    "text_lang": "ja"
+  }
+}

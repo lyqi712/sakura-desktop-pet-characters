@@ -1,0 +1,61 @@
+{
+  "id": "chun",
+  "display_name": "椿",
+  "initial_message": "……嗯，你来了。",
+  "card": "card.md",
+  "portrait": {
+    "default": "portrait_default.png",
+    "expressions": {}
+  },
+  "theme": {
+    "primary_color": "#d55b91",
+    "primary_hover_color": "#bf3f7a",
+    "accent_color": "#b13e73",
+    "text_color": "#3d2b35",
+    "secondary_text_color": "#7a3656",
+    "muted_text_color": "#9b4f72",
+    "page_background_color": "#fff6fa",
+    "panel_background_color": "#ffe8f1",
+    "input_background_color": "#ffffff",
+    "bubble_background_color": "#ffe8f1",
+    "border_color": "#eeacc8",
+    "source": "package"
+  },
+  "reply": {
+    "tones": [
+      "中性",
+      "不满",
+      "害羞",
+      "请求",
+      "困惑",
+      "惊讶",
+      "星星眼",
+      "爱心眼"
+    ]
+  },
+  "language_policy": {
+    "mode": "single_lang",
+    "text_lang": "zh",
+    "voice_lang": "zh",
+    "disallowed_langs": ["ja", "en"],
+    "note": "文字与语音均只用中文回复，禁止使用日文、英文或其他任何语言。"
+  },
+  "renderer": {
+    "type": "live2d",
+    "model": "椿.model3.json",
+    "model_dir": "live2d",
+    "mode": "half",
+    "model_scale": 0.7,
+    "half_scale": 1.48,
+    "full_scale": 1.2,
+    "resolution_scale": 2.5,
+    "max_resolution": 5.0,
+    "half_offset_y": 0.0,
+    "full_offset_y": -0.03
+  },
+  "voice": {
+    "tone_refs": "tone_refs.txt",
+    "ref_lang": "zh",
+    "text_lang": "zh"
+  }
+}

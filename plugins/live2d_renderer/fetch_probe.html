@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head><body>
+<script>
+window.__probe = { steps: [], errors: [] };
+function step(name, data) { window.__probe.steps.push({ name, data }); }
+window.onerror = (m,s,l,c,e) => window.__probe.errors.push(String(m) + ' @' + l + ':' + c);
+window.onunhandledrejection = e => window.__probe.errors.push('unhandledrejection: ' + String(e.reason && (e.reason.stack || e.reason.message || e.reason)));
+(async () => {
+  const modelUrl = "file:///D:/Sakura/data/live2d/chun/\u693f.model3.json";
+  step('model-url', modelUrl);
+  const mr = await fetch(modelUrl);
+  step('model-response', { ok: mr.ok, status: mr.status, url: mr.url });
+  const model = await mr.json();
+  step('model-json', { version: model.Version, moc: model.FileReferences && model.FileReferences.Moc, textures: model.FileReferences && model.FileReferences.Textures });
+  const mocUrl = new URL(model.FileReferences.Moc, modelUrl).href;
+  step('moc-url', mocUrl);
+  const rr = await fetch(mocUrl);
+  step('moc-response', { ok: rr.ok, status: rr.status, url: rr.url, contentType: rr.headers.get('content-type') });
+  const buf = await rr.arrayBuffer();
+  const bytes = new Uint8Array(buf.slice(0, 16));
+  step('moc-bytes', { byteLength: buf.byteLength, head: Array.from(bytes), ascii: Array.from(bytes).map(x => x>=32&&x<127 ? String.fromCharCode(x) : '.').join('') });
+  window.__probe.done = true;
+})();
+</script>
+</body></html>

@@ -1,0 +1,294 @@
+{
+  "id": "dania",
+  "display_name": "达妮娅",
+  "initial_message": "我在这里。需要我陪你说会儿话吗？",
+  "card": "card.md",
+  "portrait": {
+    "default": "PLACEHOLDER_see_README.png",
+    "_note": "占位符文件名。需要用户自行准备头像图片，改名为 portrait_default.png 并放入当前目录后生效。",
+    "expressions": {}
+  },
+  "theme": {
+    "primary_color": "#6f7f8f",
+    "primary_hover_color": "#58697a",
+    "accent_color": "#c8d6dc",
+    "text_color": "#20262c",
+    "secondary_text_color": "#4c5964",
+    "muted_text_color": "#74808a",
+    "page_background_color": "#f6f8f9",
+    "panel_background_color": "#e9eef1",
+    "input_background_color": "#ffffff",
+    "bubble_background_color": "#eef3f5",
+    "border_color": "#b9c6cc",
+    "source": "package"
+  },
+  "reply": {
+    "tones": [
+      "中性",
+      "温柔",
+      "开心",
+      "请求",
+      "困惑",
+      "认真",
+      "害羞"
+    ]
+  },
+  "language_policy": {
+    "mode": "single_lang",
+    "text_lang": "zh",
+    "voice_lang": "zh",
+    "disallowed_langs": ["ja", "en"],
+    "note": "文字与语音均只用中文回复，禁止使用日文、英文或其他任何语言。"
+  },
+  "renderer": {
+    "_note": "本仓库未附带 PMX 模型与纹理（版权归广州库洛科技有限公司，授权文件明确禁止再配布）。请自行获取授权模型后，填入 model/model_variants 实际路径。",
+    "type": "mmd",
+    "engine": "three",
+    "model": "",
+    "fallback": "hidden",
+    "model_position": [
+      0,
+      -8,
+      0
+    ],
+    "model_scale": 1.0,
+    "mouth_gain": 1.0,
+    "material_preset": "game_toon",
+    "liveness": {
+      "idle_energy": 0.72,
+      "arm_sway": 0.42,
+      "speaking_body": 0.58,
+      "thinking_stillness": 0.72
+    },
+    "material_overrides": {
+      "fur": {
+        "env": 0.02,
+        "emissive": 0.94,
+        "color": 0.98,
+        "alphaTest": 0.09,
+        "outline": 0.68,
+        "outlineAlpha": 0.46
+      },
+      "plush": {
+        "env": 0.04,
+        "emissive": 1.0,
+        "color": 1.0,
+        "alphaTest": 0.02,
+        "outline": 0.9,
+        "outlineAlpha": 0.58
+      },
+      "cloth": {
+        "env": 0.26,
+        "emissive": 1.0,
+        "color": 1.0,
+        "alphaTest": 0.02,
+        "outline": 0.98,
+        "outlineAlpha": 0.66
+      }
+    },
+    "material_name_overrides": {
+      "fur": {
+        "env": 0.0,
+        "emissive": 1.05,
+        "color": 1.02,
+        "opacity": 0.48,
+        "textureSoftness": 0.42,
+        "alphaTest": 0.055,
+        "outline": 0.4,
+        "outlineAlpha": 0.3,
+        "outlineVisible": false,
+        "alphaMode": "blend",
+        "premultiplyAlpha": true
+      },
+      "fur di": {
+        "env": 0.01,
+        "emissive": 0.98,
+        "color": 1.0,
+        "alphaTest": 0.02,
+        "outline": 0.54,
+        "outlineAlpha": 0.36
+      },
+      "娃娃": {
+        "env": 0.02,
+        "emissive": 0.88,
+        "color": 1.03,
+        "alphaTest": 0.02,
+        "outline": 0.88,
+        "outlineAlpha": 0.55
+      },
+      "red形态": {
+        "env": 0.28,
+        "emissive": 1.02,
+        "color": 1.0,
+        "alphaTest": 0.02,
+        "outline": 1.0,
+        "outlineAlpha": 0.66
+      },
+      "披风": {
+        "env": 0.26,
+        "emissive": 1.02,
+        "color": 1.0,
+        "alphaTest": 0.02,
+        "outline": 0.96,
+        "outlineAlpha": 0.62
+      },
+      "披风内": {
+        "env": 0.22,
+        "emissive": 1.0,
+        "color": 1.0,
+        "alphaTest": 0.02,
+        "outline": 0.9,
+        "outlineAlpha": 0.56
+      },
+      "连衣裙通用": {
+        "env": 0.24,
+        "emissive": 1.02,
+        "color": 1.0,
+        "alphaTest": 0.02,
+        "outline": 0.96,
+        "outlineAlpha": 0.62
+      },
+      "裙内": {
+        "env": 0.18,
+        "emissive": 1.0,
+        "color": 1.0,
+        "alphaTest": 0.02,
+        "outline": 0.9,
+        "outlineAlpha": 0.56
+      }
+    },
+    "expressions": {
+      "开心": [
+        "笑い",
+        "smile",
+        "happy"
+      ],
+      "害羞": [
+        "照れ2",
+        "照れ"
+      ],
+      "认真": [
+        "真剣",
+        "serious"
+      ],
+      "困惑": [
+        "困る",
+        "confused"
+      ]
+    },
+    "pixel_ratio_max": 2.0,
+    "physics_enabled": true,
+    "physics_warmup_frames": 8,
+    "physics_max_step_num": 1,
+    "camera": {
+      "frame": "portrait",
+      "position": [
+        0,
+        11,
+        34
+      ],
+      "target": [
+        0,
+        10,
+        0
+      ],
+      "fov": 45,
+      "coverage": 0.76,
+      "target_ratio": 0.66,
+      "offset_x": 0,
+      "offset_y": 0.4
+    },
+    "morphs": {
+      "mouth": [
+        "あ",
+        "い",
+        "う",
+        "え",
+        "お"
+      ],
+      "blink": [
+        "まばたき",
+        "E_Close"
+      ]
+    },
+    "head_pitch_neutral": 0.05,
+    "bones": {
+      "chest": "上半身2",
+      "neck": "首",
+      "head": "頭",
+      "leftShoulder": "左肩",
+      "rightShoulder": "右肩",
+      "leftArm": "左腕",
+      "rightArm": "右腕",
+      "leftElbow": "左ひじ",
+      "rightElbow": "右ひじ"
+    },
+    "active_variant": "red",
+    "model_variants": {
+      "red": {
+        "label": "红色一形态",
+        "model": ""
+      },
+      "blue": {
+        "label": "蓝色二形态",
+        "model": ""
+      }
+    }
+  },
+  "voice": {
+    "gpt_model": "",
+    "sovits_model": "",
+    "tone_refs": "PLACEHOLDER_see_README.txt",
+    "_note": "tone_refs 为占位符。本仓库未附带中文语音参考音频与 GPT-SoVITS 权重（二次创作训练权重，未经原作授权不应再配布）。请自行训练 GPT-SoVITS 权重或获取授权后，填入 gpt_model/sovits_model 实际路径，并准备 tone_refs.txt（格式见 README）及其引用的参考 wav。",
+    "ref_lang": "zh",
+    "text_lang": "zh",
+    "gpt_sovits": {
+      "params": {
+        "speed_factor": 1.02,
+        "fragment_interval": 0.28,
+        "top_k": 12,
+        "top_p": 0.94,
+        "temperature": 0.9,
+        "repetition_penalty": 1.14
+      },
+      "tones": {
+        "中性": {
+          "speed_factor": 1.02,
+          "fragment_interval": 0.28,
+          "temperature": 0.9
+        },
+        "温柔": {
+          "speed_factor": 0.98,
+          "fragment_interval": 0.34,
+          "temperature": 0.88
+        },
+        "请求": {
+          "speed_factor": 1.0,
+          "fragment_interval": 0.32,
+          "temperature": 0.9
+        },
+        "困惑": {
+          "speed_factor": 1.02,
+          "fragment_interval": 0.3,
+          "temperature": 0.9
+        },
+        "认真": {
+          "speed_factor": 1.06,
+          "fragment_interval": 0.24,
+          "temperature": 0.84,
+          "top_k": 8
+        },
+        "害羞": {
+          "speed_factor": 0.99,
+          "fragment_interval": 0.36,
+          "temperature": 0.9
+        },
+        "开心": {
+          "speed_factor": 1.08,
+          "fragment_interval": 0.22,
+          "temperature": 0.94
+        }
+      }
+    }
+  }
+}

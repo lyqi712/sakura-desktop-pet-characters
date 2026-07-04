@@ -1,0 +1,10 @@
+api_version: 1
+id: atri_music
+name: ATRI Music
+description: Adds ATRI music playback and singing tools.
+version: 1.0.0
+entry: plugin:AtriMusicPlugin
+enabled: true
+priority: 45
+permissions:
+  - tool

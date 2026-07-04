@@ -1,0 +1,26 @@
+{
+  "attempt": 40,
+  "status": {
+    "steps": [
+      {
+        "name": "globals",
+        "data": {
+          "hasPIXI": true,
+          "pixiVersion": "6.5.10",
+          "hasPixiLive2D": true,
+          "hasLive2DModel": true,
+          "hasCore": true
+        }
+      },
+      {
+        "name": "app-created",
+        "data": {
+          "renderer": 1
+        }
+      }
+    ],
+    "errors": [
+      "unhandledrejection: Error: Unknown error\n    at F.create (file:///D:/Sakura/plugins/live2d_renderer/vendor/pixi-live2d-display.min.js:1:19901)\n    at Object.createCoreModel (file:///D:/Sakura/plugins/live2d_renderer/vendor/pixi-live2d-display.min.js:1:114958)\n    at file:///D:/Sakura/plugins/live2d_renderer/vendor/pixi-live2d-display.min.js:1:96324\n    at Generator.next (<anonymous>)\n    at a (file:///D:/Sakura/plugins/live2d_renderer/vendor/pixi-live2d-display.min.js:1:76)"
+    ]
+  }
+}

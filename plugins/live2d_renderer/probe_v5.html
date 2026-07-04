@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}canvas{display:block}</style></head>
+<body>
+<script>
+window.__live2dStatus = { steps: [], errors: [] };
+window.onerror = (m,s,l,c,e) => window.__live2dStatus.errors.push(String(m) + ' @' + l + ':' + c);
+window.onunhandledrejection = e => window.__live2dStatus.errors.push('unhandledrejection: ' + String(e.reason && (e.reason.stack || e.reason.message || e.reason)));
+function step(name, data) { window.__live2dStatus.steps.push({ name, data: data || null }); }
+</script>
+<script src="file:///D:/Sakura/plugins/live2d_renderer/vendor_v5/pixi8.min.js"></script>
+<script src="file:///D:/Sakura/plugins/live2d_renderer/vendor_v5/live2dcubismcore.min.js"></script>
+<script src="file:///D:/Sakura/plugins/live2d_renderer/vendor_v5/untitled-cubism.min.js"></script>
+<script>
+(async () => {
+  step('globals', {
+    hasPIXI: !!window.PIXI,
+    pixiVersion: window.PIXI && window.PIXI.VERSION,
+    hasLive2D: !!(window.PIXI && window.PIXI.live2d),
+    keys: window.PIXI && window.PIXI.live2d ? Object.keys(window.PIXI.live2d).slice(0, 30) : [],
+    hasModel: !!(window.PIXI && window.PIXI.live2d && window.PIXI.live2d.Live2DModel),
+    hasPlugin: !!(window.PIXI && window.PIXI.live2d && window.PIXI.live2d.Live2DPlugin),
+    hasCore: !!window.Live2DCubismCore,
+  });
+  const { Application, extensions } = PIXI;
+  const { Live2DModel, Live2DPlugin, configureCubismSDK } = PIXI.live2d;
+  extensions.add(Live2DPlugin);
+  if (configureCubismSDK) configureCubismSDK({ memorySizeMB: 64 });
+  const app = new Application();
+  await app.init({ width: 350, height: 500, backgroundAlpha: 0, preference: 'webgl' });
+  document.body.appendChild(app.canvas);
+  step('app-created', { w: app.screen.width, h: app.screen.height, renderer: app.renderer.name || app.renderer.type });
+  const model = await Live2DModel.from("file:///D:/Sakura/data/live2d/chun/\u693f.model3.json", { textureOptions: { lod: false } });
+  step('model-loaded', { width: model.width, height: model.height, internalWidth: model.internalModel && model.internalModel.originalWidth, internalHeight: model.internalModel && model.internalModel.originalHeight });
+  model.anchor.set(0.5, 1.0);
+  model.position.set(175, 500);
+  const mw = model.internalModel && model.internalModel.originalWidth || model.width;
+  const mh = model.internalModel && model.internalModel.originalHeight || model.height;
+  model.scale.set(Math.min(350 / mw, 500 / mh) * 0.95);
+  app.stage.addChild(model);
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  app.renderer.render(app.stage);
+  const gl = app.renderer.gl;
+  const pixels = new Uint8Array(350 * 500 * 4);
+  gl.readPixels(0, 0, 350, 500, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+  let nonZeroAlpha = 0;
+  for (let i = 3; i < pixels.length; i += 4) { if (pixels[i] !== 0) nonZeroAlpha++; }
+  window.__live2dStatus.nonZeroAlpha = nonZeroAlpha;
+  window.__live2dStatus.done = true;
+  step('pixel-check', { nonZeroAlpha });
+})();
+</script>
+</body></html>

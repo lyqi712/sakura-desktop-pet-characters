@@ -1,0 +1,25 @@
+{
+  "attempt": 0,
+  "status": {
+    "steps": [
+      {
+        "name": "globals",
+        "data": {
+          "hasPIXI": true,
+          "pixiVersion": "8.19.0",
+          "hasLive2D": true,
+          "keys": [
+            "Live2DCubismFramework"
+          ],
+          "hasModel": false,
+          "hasPlugin": false,
+          "hasCore": true
+        }
+      }
+    ],
+    "errors": [
+      "Uncaught TypeError: Cannot set properties of undefined (setting 'disableAutoPause') @1:31155",
+      "unhandledrejection: Error: Invalid extension type\n    at Aa (file:///D:/Sakura/plugins/live2d_renderer/vendor_v5/pixi8.min.js:7:1445)\n    at Array.map (<anonymous>)\n    at Object.add (file:///D:/Sakura/plugins/live2d_renderer/vendor_v5/pixi8.min.js:7:1796)\n    at file:///D:/Sakura/plugins/live2d_renderer/probe_v5.html:27:14\n    at file:///D:/Sakura/plugins/live2d_renderer/probe_v5.html:51:3"
+    ]
+  }
+}

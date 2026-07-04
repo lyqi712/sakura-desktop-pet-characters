@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+html, body { margin:0; width:100%; height:100%; overflow:hidden; background: transparent; }
+canvas { display:block; width:100%; height:100%; }
+</style>
+</head>
+<body>
+<canvas id="c" width="350" height="500"></canvas>
+<script>
+window.__sakuraLive2DStatus = { steps: [], errors: [] };
+window.onerror = (m,s,l,c,e) => window.__sakuraLive2DStatus.errors.push(String(m) + ' @' + l + ':' + c);
+window.onunhandledrejection = e => window.__sakuraLive2DStatus.errors.push('unhandledrejection: ' + String(e.reason && (e.reason.stack || e.reason.message || e.reason)));
+</script>
+<script src="file:///D:/Sakura/plugins/live2d_renderer/vendor_v5/live2dcubismcore.min.js"></script>
+<script src="file:///D:/Sakura/plugins/live2d_renderer/vendor_v5/sakura-live2d-bundle.js"></script>
+<script>
+const W = window.innerWidth || 420, H = window.innerHeight || 570;
+window.SakuraLive2D.create(document.getElementById('c'), "file:///D:/Sakura/data/live2d/atri/atri_8.model3.json", W, H, {"mode": "half", "userScale": 1.0, "halfScale": 1.0, "fullScale": 0.82, "resolutionScale": 2.5, "maxResolution": 5.0, "halfOffsetY": -0.02, "fullOffsetY": -0.04, "safeResetParams": {"Param31": 0.0, "Param36": 0.0, "Param22": 0.0, "Param21": 0.0, "Param10": 0.0}, "hiddenParts": ["Part5"], "hiddenDrawables": ["Square2048"], "disableVendorExpressions": true, "sceneActions": {"enabled": true, "idleIntervalMs": 60000, "layers": {"outfit": [{"id": "sleepwear", "params": {"Param18": 30.0}}, {"id": "swimsuit", "params": {"Param17": 30.0}}, {"id": "pumpkin_pants", "params": {"Param9": 30.0}}], "shoes": [{"id": "sandals", "params": {"Param19": 30.0}}, {"id": "leather_shoes", "params": {"Param20": 30.0}}], "prop": [{"id": "bird", "params": {"Param37": 30.0}}, {"id": "kani", "params": {"Param38": 30.0}}, {"id": "pillow", "params": {"Param39": 30.0}}]}, "transients": {"blush": {"id": "blush", "params": {"ParamCheek": 1.0}, "durationMs": 1800}, "emotion_happy": {"id": "emotion_happy", "params": {"ParamEyeLSmile": 1.0, "ParamEyeRSmile": 1.0, "ParamMouthForm": 1.0, "ParamBrowLForm": 0.6, "ParamBrowRForm": 0.6}, "durationMs": 2800}, "emotion_shy": {"id": "emotion_shy", "params": {"ParamCheek": 1.0, "ParamEyeLSmile": 0.6, "ParamEyeRSmile": 0.6, "ParamMouthForm": 0.4, "ParamBrowLY": -0.3, "ParamBrowRY": -0.3}, "durationMs": 2800}, "emotion_confused": {"id": "emotion_confused", "params": {"ParamBrowLForm": -0.6, "ParamBrowRForm": 0.5, "ParamBrowLAngle": -0.5, "ParamBrowRAngle": 0.3, "ParamMouthForm": -0.2}, "durationMs": 2800}, "emotion_surprise": {"id": "emotion_surprise", "params": {"ParamBrowLY": 1.0, "ParamBrowRY": 1.0, "ParamBrowLForm": 0.8, "ParamBrowRForm": 0.8, "ParamMouthForm": 0.0}, "durationMs": 2800}, "emotion_serious": {"id": "emotion_serious", "params": {"ParamBrowLForm": -0.7, "ParamBrowRForm": -0.7, "ParamBrowLAngle": -0.5, "ParamBrowRAngle": -0.5, "ParamMouthForm": -0.3}, "durationMs": 2800}, "emotion_sad": {"id": "emotion_sad", "params": {"ParamBrowLForm": -0.8, "ParamBrowRForm": -0.8, "ParamBrowLY": -0.6, "ParamBrowRY": -0.6, "ParamMouthForm": -0.9}, "durationMs": 3000}}, "motions": {"decorate_left": {"id": "decorate_left", "motion": "DecorateLeft", "loop": false}, "decorate_right": {"id": "decorate_right", "motion": "DecorateRight", "loop": false}}, "events": {"tts.started": [{"kind": "transient", "id": "blush", "weight": 1.0}], "llm.request.started": [{"kind": "motion", "id": "decorate_left", "weight": 1.0}], "pet.clicked": [{"kind": "transient", "id": "blush", "weight": 1.0}, {"kind": "motion", "id": "decorate_right", "weight": 1.0}]}, "idlePool": [{"kind": "transient", "id": "blush", "weight": 2.0}, {"kind": "motion", "id": "decorate_left", "weight": 1.0}, {"kind": "motion", "id": "decorate_right", "weight": 1.0}]}});
+var _LIVE2D_OPTIONS = {"mode": "half", "userScale": 1.0, "halfScale": 1.0, "fullScale": 0.82, "resolutionScale": 2.5, "maxResolution": 5.0, "halfOffsetY": -0.02, "fullOffsetY": -0.04, "safeResetParams": {"Param31": 0.0, "Param36": 0.0, "Param22": 0.0, "Param21": 0.0, "Param10": 0.0}, "hiddenParts": ["Part5"], "hiddenDrawables": ["Square2048"], "disableVendorExpressions": true, "sceneActions": {"enabled": true, "idleIntervalMs": 60000, "layers": {"outfit": [{"id": "sleepwear", "params": {"Param18": 30.0}}, {"id": "swimsuit", "params": {"Param17": 30.0}}, {"id": "pumpkin_pants", "params": {"Param9": 30.0}}], "shoes": [{"id": "sandals", "params": {"Param19": 30.0}}, {"id": "leather_shoes", "params": {"Param20": 30.0}}], "prop": [{"id": "bird", "params": {"Param37": 30.0}}, {"id": "kani", "params": {"Param38": 30.0}}, {"id": "pillow", "params": {"Param39": 30.0}}]}, "transients": {"blush": {"id": "blush", "params": {"ParamCheek": 1.0}, "durationMs": 1800}, "emotion_happy": {"id": "emotion_happy", "params": {"ParamEyeLSmile": 1.0, "ParamEyeRSmile": 1.0, "ParamMouthForm": 1.0, "ParamBrowLForm": 0.6, "ParamBrowRForm": 0.6}, "durationMs": 2800}, "emotion_shy": {"id": "emotion_shy", "params": {"ParamCheek": 1.0, "ParamEyeLSmile": 0.6, "ParamEyeRSmile": 0.6, "ParamMouthForm": 0.4, "ParamBrowLY": -0.3, "ParamBrowRY": -0.3}, "durationMs": 2800}, "emotion_confused": {"id": "emotion_confused", "params": {"ParamBrowLForm": -0.6, "ParamBrowRForm": 0.5, "ParamBrowLAngle": -0.5, "ParamBrowRAngle": 0.3, "ParamMouthForm": -0.2}, "durationMs": 2800}, "emotion_surprise": {"id": "emotion_surprise", "params": {"ParamBrowLY": 1.0, "ParamBrowRY": 1.0, "ParamBrowLForm": 0.8, "ParamBrowRForm": 0.8, "ParamMouthForm": 0.0}, "durationMs": 2800}, "emotion_serious": {"id": "emotion_serious", "params": {"ParamBrowLForm": -0.7, "ParamBrowRForm": -0.7, "ParamBrowLAngle": -0.5, "ParamBrowRAngle": -0.5, "ParamMouthForm": -0.3}, "durationMs": 2800}, "emotion_sad": {"id": "emotion_sad", "params": {"ParamBrowLForm": -0.8, "ParamBrowRForm": -0.8, "ParamBrowLY": -0.6, "ParamBrowRY": -0.6, "ParamMouthForm": -0.9}, "durationMs": 3000}}, "motions": {"decorate_left": {"id": "decorate_left", "motion": "DecorateLeft", "loop": false}, "decorate_right": {"id": "decorate_right", "motion": "DecorateRight", "loop": false}}, "events": {"tts.started": [{"kind": "transient", "id": "blush", "weight": 1.0}], "llm.request.started": [{"kind": "motion", "id": "decorate_left", "weight": 1.0}], "pet.clicked": [{"kind": "transient", "id": "blush", "weight": 1.0}, {"kind": "motion", "id": "decorate_right", "weight": 1.0}]}, "idlePool": [{"kind": "transient", "id": "blush", "weight": 2.0}, {"kind": "motion", "id": "decorate_left", "weight": 1.0}, {"kind": "motion", "id": "decorate_right", "weight": 1.0}]}};
+var _SAFE_RESET_PARAMS = _LIVE2D_OPTIONS.safeResetParams || {};
+var _HIDDEN_PARTS = _LIVE2D_OPTIONS.hiddenParts || [];
+var _HIDDEN_DRAWABLES = _LIVE2D_OPTIONS.hiddenDrawables || [];
+var _DISABLE_VENDOR_EXPRESSIONS = !!_LIVE2D_OPTIONS.disableVendorExpressions;
+var _SCENE_ACTIONS = _LIVE2D_OPTIONS.sceneActions || {};
+var _SCENE_ACTION_OWNED_PARAMS = {};
+var _OWNED_PARAM_VALUES = {};
+function lookAt(x, y) { if (window.__sakuraLive2D) window.__sakuraLive2D.lookAt(x, y); }
+var _currentExpressionName = null;
+var _currentExpressionResolved = null;
+var _currentExpressionWeight = 1.0;
+var _currentExpressionUntil = 0;
+window.__sakuraExpressionDebug = {
+  calls: [],
+  errors: [],
+  last: null,
+  params: {},
+  speaking: { active: false, mouthOpen: 0, thinking: false }
+};
+var _EXPRESSION_ALIASES = {
+  '中性': '',
+  '站立待机': '',
+  '黑脸': '黑脸',
+  '不满': '黑脸',
+  '生气': '黑脸',
+  '愤怒': '黑脸',
+  '恼火': '黑脸',
+  '嫌弃': '黑脸',
+  '冷淡': '黑脸',
+  '脸红': '脸红',
+  '害羞': '脸红',
+  '请求': '脸红',
+  '羞涩': '脸红',
+  '紧张': '脸红',
+  '眼高光消失': '眼高光消失',
+  '困惑': '眼高光消失',
+  '疑惑': '眼高光消失',
+  '疑问': '眼高光消失',
+  '不解': '眼高光消失',
+  '哭': '哭',
+  '悲伤': '哭',
+  '伤心': '哭',
+  '难过': '哭',
+  '委屈': '哭',
+  '哭泣': '哭',
+  '爱心眼': '爱心眼',
+  '星星眼': '星星眼',
+  '眼冒星星': '星星眼',
+  '两眼放光': '星星眼',
+  '兴奋': '星星眼',
+  '开心': '爱心眼',
+  '喜欢': '爱心眼',
+  '期待': '星星眼',
+  '崇拜': '爱心眼',
+  '赞叹': '爱心眼',
+  '惊喜': '星星眼',
+  '惊讶': '爱心眼'
+};
+var _EXPRESSION_PARAMS = {
+  '黑脸': {'Button1': 1.0},
+  '脸红': {'Button2': 1.0},
+  '眼高光消失': {'Button3': 1.0},
+  '哭': {'Button4': 1.0},
+  '爱心眼': {'Button7': 1.0},
+  '星星眼': {'Button7': 1.0, 'ParamEyeLOpen': 1.18, 'ParamEyeROpen': 1.18, 'ParamEyeExpression1': 1.0, 'ParamEyeExpression2': 1.0}
+};
+var _EXPRESSION_VENDOR_NAMES = {
+  '黑脸': '黑脸',
+  '脸红': '脸红',
+  '眼高光消失': '眼高光消失',
+  '哭': '哭',
+  '爱心眼': '爱心眼',
+  '星星眼': '爱心眼'
+};
+function _recordExpressionError(where, error) {
+  var text = String(error && (error.stack || error.message || error) || error);
+  window.__sakuraExpressionDebug.errors.push({ where: where, error: text, at: Date.now() });
+  if (window.__sakuraExpressionDebug.errors.length > 20) window.__sakuraExpressionDebug.errors.shift();
+}
+function _normalizeExpressionName(name) {
+  var key = String(name || '').trim();
+  if (Object.prototype.hasOwnProperty.call(_EXPRESSION_ALIASES, key)) return _EXPRESSION_ALIASES[key];
+  return key;
+}
+function _getCoreModel() {
+  var l2d = window.__sakuraLive2D;
+  return l2d && l2d.model && l2d.model.internalModel && l2d.model.internalModel.coreModel;
+}
+function _idText(id) {
+  try {
+    if (id == null) return '';
+    if (typeof id === 'string') return id;
+    if (typeof id.getString === 'function') {
+      var value = id.getString();
+      if (value && typeof value.s === 'string') return value.s;
+      return String(value);
+    }
+    if (typeof id.s === 'string') return id.s;
+    return String(id);
+  } catch (error) {
+    _recordExpressionError('id-text', error);
+    return '';
+  }
+}
+function _parameterIds(cm) {
+  var ids = [];
+  try {
+    if (!cm || typeof cm.getParameterCount !== 'function' || typeof cm.getParameterId !== 'function') return ids;
+    var count = cm.getParameterCount();
+    for (var i = 0; i < count; i++) ids.push(_idText(cm.getParameterId(i)));
+  } catch (error) {
+    _recordExpressionError('parameter-ids', error);
+  }
+  return ids;
+}
+function _paramSnapshot(cm, ids, id) {
+  var index = ids.indexOf(id);
+  var item = { id: id, exists: index >= 0, value: null };
+  try {
+    if (index >= 0 && typeof cm.getParameterValueByIndex === 'function') {
+      item.value = cm.getParameterValueByIndex(index);
+    }
+  } catch (error) {
+    item.error = String(error && (error.message || error));
+  }
+  return item;
+}
+function _sampleParams(cm) {
+  var ids = _parameterIds(cm);
+  var sampleIds = ['Button1', 'Button2', 'Button3', 'Button4', 'Button7', 'ParamMouthOpenY'];
+  var sample = {};
+  for (var i = 0; i < sampleIds.length; i++) sample[sampleIds[i]] = _paramSnapshot(cm, ids, sampleIds[i]);
+  return {
+    count: ids.length,
+    firstIds: ids.slice(0, 80),
+    sample: sample
+  };
+}
+function _writeParam(cm, ids, id, value) {
+  var before = _paramSnapshot(cm, ids, id);
+  var wrote = false;
+  try {
+    wrote = _setParamByName(cm, ids, id, value);
+  } catch (error) {
+    before.error = String(error && (error.message || error));
+    _recordExpressionError('write-' + id, error);
+  }
+  var after = _paramSnapshot(cm, ids, id);
+  return { id: id, exists: before.exists, wrote: wrote, before: before.value, after: after.value, value: value };
+}
+function _setParamByName(cm, ids, id, value) {
+  var index = ids.indexOf(id);
+  if (index < 0 || typeof cm.setParameterValueByIndex !== 'function') return false;
+  cm.setParameterValueByIndex(index, value);
+  return true;
+}
+function _rawCubismModel(cm) {
+  try {
+    if (cm && typeof cm.getModel === 'function') return cm.getModel();
+  } catch (error) {
+    _recordExpressionError('raw-cubism-model', error);
+  }
+  return null;
+}
+function _rawIdList(items) {
+  var ids = [];
+  if (!items || !items.ids) return ids;
+  for (var i = 0; i < items.ids.length; i++) ids.push(_idText(items.ids[i]));
+  return ids;
+}
+function _applyRenderGuards(cm, recompute) {
+  if (!cm) return;
+  var ids = _parameterIds(cm);
+  var names = Object.keys(_SAFE_RESET_PARAMS || {});
+  for (var i = 0; i < names.length; i++) {
+    if (_SCENE_ACTION_OWNED_PARAMS[names[i]]) continue;
+    var value = Number(_SAFE_RESET_PARAMS[names[i]]);
+    if (isFinite(value)) _setParamByName(cm, ids, names[i], value);
+  }
+  if (recompute && typeof cm.update === 'function') {
+    try {
+      cm.update();
+    } catch (error) {
+      _recordExpressionError('guard-recompute', error);
+    }
+  }
+  var raw = _rawCubismModel(cm);
+  if (_HIDDEN_PARTS.length && typeof cm.getPartCount === 'function' && typeof cm.getPartId === 'function' && typeof cm.setPartOpacityByIndex === 'function') {
+    for (var i = 0; i < cm.getPartCount(); i++) {
+      if (_HIDDEN_PARTS.indexOf(_idText(cm.getPartId(i))) >= 0) cm.setPartOpacityByIndex(i, 0);
+    }
+  }
+  if (_HIDDEN_PARTS.length && raw && raw.parts && raw.parts.opacities) {
+    var rawPartIds = _rawIdList(raw.parts);
+    for (var k = 0; k < rawPartIds.length; k++) {
+      if (_HIDDEN_PARTS.indexOf(rawPartIds[k]) >= 0) raw.parts.opacities[k] = 0;
+    }
+  }
+  if (_HIDDEN_DRAWABLES.length && typeof cm.getDrawableCount === 'function' && typeof cm.getDrawableId === 'function' && typeof cm.setDrawableCulling === 'function') {
+    for (var j = 0; j < cm.getDrawableCount(); j++) {
+      if (_HIDDEN_DRAWABLES.indexOf(_idText(cm.getDrawableId(j))) >= 0) cm.setDrawableCulling(j, true);
+    }
+  }
+  if (_HIDDEN_DRAWABLES.length && raw && raw.drawables && raw.drawables.opacities) {
+    var rawDrawableIds = _rawIdList(raw.drawables);
+    for (var j = 0; j < rawDrawableIds.length; j++) {
+      if (_HIDDEN_DRAWABLES.indexOf(rawDrawableIds[j]) >= 0) raw.drawables.opacities[j] = 0;
+    }
+  }
+}
+window.__sakuraApplyLive2DRenderGuards = _applyRenderGuards;
+function _installRenderGuards() {
+  var l2d = window.__sakuraLive2D;
+  var internal = l2d && l2d.model && l2d.model.internalModel;
+  if (!internal || internal.__sakuraRenderGuardsInstalled) return false;
+  var originalUpdate = internal.update;
+  if (typeof originalUpdate !== 'function') return false;
+  internal.update = function() {
+    var result = originalUpdate.apply(this, arguments);
+    _applyRenderGuards(this.coreModel, true);
+    return result;
+  };
+  internal.__sakuraRenderGuardsInstalled = true;
+  _applyRenderGuards(internal.coreModel, true);
+  return true;
+}
+function _applyExpressionParams(cm, name, weight) {
+  var result = {
+    requested: name,
+    resolved: _normalizeExpressionName(name),
+    targetButton: null,
+    targetParams: null,
+    writes: [],
+    sampleParams: null
+  };
+  if (!cm || typeof cm.setParameterValueByIndex !== 'function') return result;
+  var ids = _parameterIds(cm);
+  var buttons = ['Button1', 'Button2', 'Button3', 'Button4', 'Button7'];
+  for (var i = 0; i < buttons.length; i++) result.writes.push(_writeParam(cm, ids, buttons[i], 0));
+  if (!result.resolved) {
+    result.sampleParams = _sampleParams(cm);
+    return result;
+  }
+  var params = _EXPRESSION_PARAMS[result.resolved] || null;
+  result.targetParams = params;
+  if (params) {
+    var names = Object.keys(params);
+    for (var j = 0; j < names.length; j++) {
+      var id = names[j];
+      if (!result.targetButton && id.indexOf('Button') === 0) result.targetButton = id;
+      result.writes.push(_writeParam(cm, ids, id, params[id] * (typeof weight === 'number' ? weight : 1.0)));
+    }
+  }
+  result.sampleParams = _sampleParams(cm);
+  return result;
+}
+function setExpression(name, weight) {
+  var call = {
+    event: 'expression-telemetry',
+    requested: String(name || '').trim(),
+    resolved: null,
+    weight: typeof weight === 'number' ? weight : 1.0,
+    hasLive2D: !!window.__sakuraLive2D,
+    hasModel: false,
+    hasCoreModel: false,
+    vendorCalled: false,
+    vendorReturn: null,
+    buttonResult: null,
+    at: Date.now()
+  };
+  var resolvedName = _normalizeExpressionName(name);
+  var vendorName = _EXPRESSION_VENDOR_NAMES[resolvedName] || resolvedName;
+  call.resolved = resolvedName;
+  call.vendorName = vendorName;
+  if (!window.__sakuraLive2D) {
+    window.__sakuraExpressionDebug.last = call;
+    window.__sakuraExpressionDebug.calls.push(call);
+    return;
+  }
+  try {
+    if (_DISABLE_VENDOR_EXPRESSIONS) {
+      call.vendorSkipped = true;
+    } else if (vendorName) {
+      call.vendorReturn = window.__sakuraLive2D.setExpression(vendorName);
+      call.vendorCalled = true;
+    } else {
+      var manager = window.__sakuraLive2D.model && window.__sakuraLive2D.model.internalModel && window.__sakuraLive2D.model.internalModel.motionManager && window.__sakuraLive2D.model.internalModel.motionManager.expressionManager;
+      if (manager && manager.resetExpression) manager.resetExpression();
+      call.vendorCalled = !!manager;
+    }
+  } catch(error) {
+    call.vendorError = String(error && (error.message || error));
+    _recordExpressionError('vendor-setExpression', error);
+  }
+  var l2d = window.__sakuraLive2D;
+  var cm = l2d.model && l2d.model.internalModel && l2d.model.internalModel.coreModel;
+  call.hasModel = !!(l2d && l2d.model);
+  call.hasCoreModel = !!cm;
+  _currentExpressionName = call.requested;
+  _currentExpressionResolved = resolvedName;
+  _currentExpressionWeight = call.weight;
+  _currentExpressionUntil = Date.now() + 9000;
+  call.buttonResult = _applyExpressionParams(cm, _currentExpressionResolved, _currentExpressionWeight);
+  _applyRenderGuards(cm, true);
+  window.__sakuraExpressionDebug.last = call;
+  window.__sakuraExpressionDebug.calls.push(call);
+  if (window.__sakuraExpressionDebug.calls.length > 12) window.__sakuraExpressionDebug.calls.shift();
+}
+function getExpressionDebug() {
+  var cm = _getCoreModel();
+  window.__sakuraExpressionDebug.params = _sampleParams(cm);
+  window.__sakuraExpressionDebug.layout = (window.__sakuraLive2DStatus && window.__sakuraLive2DStatus.layoutTelemetry) || null;
+  window.__sakuraExpressionDebug.speaking = {
+    active: _speaking,
+    mouthOpen: _mouthOpen,
+    thinking: _thinking,
+    currentExpressionName: _currentExpressionName,
+    currentExpressionResolved: _currentExpressionResolved,
+    currentExpressionUntil: _currentExpressionUntil
+  };
+  return JSON.stringify(window.__sakuraExpressionDebug);
+}
+function playMotion(name, loop) { if (window.__sakuraLive2D) window.__sakuraLive2D.playMotion(name, loop); }
+function resizeLive2D(w, h, layoutH) { if (window.__sakuraLive2D) window.__sakuraLive2D.resize(w || window.innerWidth || 420, h || window.innerHeight || 570, layoutH); }
+function forceRenderLive2D() { if (window.__sakuraLive2D && typeof window.__sakuraLive2D.forceRender === 'function') window.__sakuraLive2D.forceRender(); }
+function setUserScale(scale) {
+  var next = Number(scale);
+  if (!isFinite(next) || next <= 0) next = 1.0;
+  next = Math.max(0.3, Math.min(3.0, next));
+  if (window.__sakuraLive2D && typeof window.__sakuraLive2D.setUserScale === 'function') {
+    return window.__sakuraLive2D.setUserScale(next);
+  }
+  return false;
+}
+function setMode(mode) {
+  if (window.__sakuraLive2D && typeof window.__sakuraLive2D.setMode === 'function') {
+    return window.__sakuraLive2D.setMode(mode);
+  }
+  return false;
+}
+window.addEventListener('resize', () => {
+  resizeLive2D(window.innerWidth || 420, window.innerHeight || 570);
+});
+
+
+// Configurable scene actions: persistent layers, transient params, motions, and event hooks.
+function _sceneActionObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+function _sceneActionArray(value) {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === 'object') return [value];
+  return [];
+}
+function _sceneActionParams(value) {
+  return _sceneActionObject(value);
+}
+function _sceneActionParamNames(action) {
+  var params = _sceneActionParams(action && action.params);
+  return Object.keys(params);
+}
+function _sceneActionFind(items, id) {
+  var wanted = String(id || '');
+  for (var i = 0; i < items.length; i++) {
+    if (String(items[i].id || '') === wanted) return items[i];
+  }
+  return null;
+}
+window.SakuraLive2DSceneActions = {
+  activeLayers: {},
+  transientTimers: {},
+  idleTimer: null,
+  ownParam: function(param, owned, value) {
+    var key = String(param || '').trim();
+    if (!key) return;
+    if (owned) {
+      _SCENE_ACTION_OWNED_PARAMS[key] = true;
+      if (typeof value === 'number' && isFinite(value)) _OWNED_PARAM_VALUES[key] = value;
+    } else {
+      delete _SCENE_ACTION_OWNED_PARAMS[key];
+      delete _OWNED_PARAM_VALUES[key];
+    }
+  },
+  writeParams: function(params, owned) {
+    var cm = _getCoreModel();
+    if (!cm || typeof cm.setParameterValueByIndex !== 'function') return;
+    var ids = _parameterIds(cm);
+    params = _sceneActionParams(params);
+    var names = Object.keys(params);
+    for (var i = 0; i < names.length; i++) {
+      var param = names[i];
+      var value = Number(params[param]);
+      if (!isFinite(value)) continue;
+      _setParamByName(cm, ids, param, value);
+      if (owned) SakuraLive2DSceneActions.ownParam(param, true, value);
+    }
+    _applyRenderGuards(cm, true);
+  },
+  resetParams: function(params, resetParams) {
+    var cm = _getCoreModel();
+    if (!cm || typeof cm.setParameterValueByIndex !== 'function') return;
+    var ids = _parameterIds(cm);
+    params = _sceneActionParams(params);
+    resetParams = _sceneActionParams(resetParams);
+    var names = Object.keys(params);
+    for (var i = 0; i < names.length; i++) {
+      var param = names[i];
+      var value = Object.prototype.hasOwnProperty.call(resetParams, param) ? Number(resetParams[param]) : 0;
+      if (!isFinite(value)) value = 0;
+      _setParamByName(cm, ids, param, value);
+      SakuraLive2DSceneActions.ownParam(param, false);
+    }
+    _applyRenderGuards(cm, true);
+  },
+  clearLayer: function(layerName) {
+    var layers = _sceneActionObject(_SCENE_ACTIONS.layers);
+    var items = _sceneActionArray(layers[layerName]);
+    for (var i = 0; i < items.length; i++) {
+      this.resetParams(items[i].params, items[i].resetParams);
+    }
+    delete this.activeLayers[layerName];
+  },
+  applyLayer: function(layerName, id) {
+    var layers = _sceneActionObject(_SCENE_ACTIONS.layers);
+    var items = _sceneActionArray(layers[layerName]);
+    var action = _sceneActionFind(items, id);
+    if (!action) return false;
+    this.clearLayer(layerName);
+    this.writeParams(action.params, true);
+    this.activeLayers[layerName] = action;
+    return true;
+  },
+  applyTransient: function(id, durationMs) {
+    var transients = _sceneActionObject(_SCENE_ACTIONS.transients);
+    var action = transients[String(id || '')];
+    if (!action) return false;
+    var duration = Number(durationMs || action.durationMs || 1600);
+    if (!isFinite(duration) || duration <= 0) duration = 1600;
+    if (this.transientTimers[id]) clearTimeout(this.transientTimers[id]);
+    this.writeParams(action.params, true);
+    this.transientTimers[id] = setTimeout(function() {
+      SakuraLive2DSceneActions.resetParams(action.params, action.resetParams);
+      delete SakuraLive2DSceneActions.transientTimers[id];
+    }, duration);
+    return true;
+  },
+  playMotionAction: function(id) {
+    var motions = _sceneActionObject(_SCENE_ACTIONS.motions);
+    var action = motions[String(id || '')];
+    if (!action || !action.motion) return false;
+    playMotion(action.motion, !!action.loop);
+    return true;
+  },
+  runAction: function(action, payload) {
+    action = _sceneActionObject(action);
+    var kind = String(action.kind || '').trim();
+    try {
+      if (kind === 'layer') return this.applyLayer(action.layer, action.id);
+      if (kind === 'transient') return this.applyTransient(action.id, action.durationMs);
+      if (kind === 'motion') return this.playMotionAction(action.id);
+      if (kind === 'expression') {
+        setExpression(action.name || action.id || '', Number(action.weight || 1.0));
+        return true;
+      }
+      if (kind === 'params') {
+        this.writeParams(action.params, true);
+        var duration = Number(action.durationMs || 0);
+        if (isFinite(duration) && duration > 0) {
+          setTimeout(function() {
+            SakuraLive2DSceneActions.resetParams(action.params, action.resetParams);
+          }, duration);
+        }
+        return true;
+      }
+    } catch (error) {
+      _recordExpressionError('scene-action-' + kind, error);
+    }
+    return false;
+  },
+  runActions: function(actions, payload) {
+    var list = _sceneActionArray(actions);
+    for (var i = 0; i < list.length; i++) this.runAction(list[i], payload || {});
+  },
+  pickWeighted: function(pool) {
+    var items = _sceneActionArray(pool);
+    if (!items.length) return null;
+    var total = 0;
+    for (var i = 0; i < items.length; i++) {
+      var weight = Number(items[i].weight || 1);
+      if (isFinite(weight) && weight > 0) total += weight;
+    }
+    if (total <= 0) return items[Math.floor(Math.random() * items.length)];
+    var cursor = Math.random() * total;
+    for (var j = 0; j < items.length; j++) {
+      var itemWeight = Number(items[j].weight || 1);
+      if (!isFinite(itemWeight) || itemWeight <= 0) continue;
+      cursor -= itemWeight;
+      if (cursor <= 0) return items[j];
+    }
+    return items[items.length - 1];
+  },
+  runIdleAction: function() {
+    if (_SCENE_ACTIONS.enabled === false) return;
+    var action = this.pickWeighted(_SCENE_ACTIONS.idlePool);
+    if (action) this.runAction(action, {source: 'idle'});
+  },
+  startIdleTimer: function() {
+    if (_SCENE_ACTIONS.enabled === false || this.idleTimer) return;
+    var interval = Number(_SCENE_ACTIONS.idleIntervalMs || 18000);
+    if (!isFinite(interval) || interval < 3000) interval = 18000;
+    this.idleTimer = setInterval(function() {
+      _runSceneIdleAction();
+    }, interval);
+  },
+  dispatch: function(eventName, payload) {
+    if (_SCENE_ACTIONS.enabled === false) return;
+    var events = _sceneActionObject(_SCENE_ACTIONS.events);
+    this.runActions(events[String(eventName || '')], payload || {});
+  }
+};
+function _runSceneIdleAction() {
+  if (window.SakuraLive2DSceneActions) window.SakuraLive2DSceneActions.runIdleAction();
+}
+function _installSceneActionEventHandlers() {
+  if (window.__sakuraSceneActionHandlersInstalled) return;
+  window.__sakuraSceneActionHandlersInstalled = true;
+  window.addEventListener('sakura:tts.started', function(event) {
+    dispatchLive2DSceneEvent('tts.started', event.detail || {});
+  });
+  window.addEventListener('sakura:llm.request.started', function(event) {
+    dispatchLive2DSceneEvent('llm.request.started', event.detail || {});
+  });
+  window.addEventListener('sakura:pet.clicked', function(event) {
+    dispatchLive2DSceneEvent('pet.clicked', event.detail || {});
+  });
+  window.SakuraLive2DSceneActions.startIdleTimer();
+}
+window.dispatchLive2DSceneEvent = function(eventName, payload) {
+  if (window.SakuraLive2DSceneActions) {
+    window.SakuraLive2DSceneActions.dispatch(eventName, payload || {});
+  }
+};
+window.triggerLive2DSceneAction = function(kind, name) {
+  if (!window.SakuraLive2DSceneActions) return false;
+  kind = String(kind || '').trim();
+  name = name == null ? '' : String(name || '').trim();
+  if (kind === 'idle') return window.SakuraLive2DSceneActions.runIdleAction();
+  if (kind === 'layer') {
+    var sep = name.indexOf(':');
+    if (sep <= 0) return false;
+    return window.SakuraLive2DSceneActions.applyLayer(name.slice(0, sep), name.slice(sep + 1));
+  }
+  if (kind === 'motion') return window.SakuraLive2DSceneActions.playMotionAction(name);
+  if (kind === 'transient') return window.SakuraLive2DSceneActions.applyTransient(name);
+  return false;
+};
+
+
+// ============================================================
+//  Liveness Engine v2 — 无摄像头拟真动感
+//  用平滑噪声(fBm) + 眼球扫视(saccade) + 自主注意力漂移 +
+//  长周期重心转移 替换可预测的纯正弦 idle，模拟真人的随机微动。
+// ============================================================
+var _speaking = false;
+var _thinking = false;
+var _mouthOpen = 0;
+var _mouthTarget = 0;
+var _nextMouthTargetAt = 0;
+var _interactionUntil = 0;
+var _interactionKind = '';
+var _interactionPulse = 0;
+var _blinkUntil = 0;
+var _nextBlinkAt = Date.now() + 1800 + Math.random() * 1600;
+var _doubleBlink = false;
+window.setSpeaking = function(v) { _speaking = !!v; if (!v) { _mouthTarget = 0; } };
+window.setThinking = function(v) { _thinking = !!v; };
+function _clamp01(v) { return Math.max(0, Math.min(1, v)); }
+function _easeOut(v) { v = _clamp01(v); return 1 - Math.pow(1 - v, 3); }
+function _easeInOut(v) { v = _clamp01(v); return v < 0.5 ? 2*v*v : 1 - Math.pow(-2*v+2, 2)/2; }
+
+// ---- 确定性平滑噪声 (value noise + fBm) ----
+// 比纯正弦更自然：人眼无法识别其周期，产生"有机随机"的漂移感。
+function _hash1(n) { var s = Math.sin(n) * 43758.5453123; return s - Math.floor(s); }
+function _vnoise(x) {
+  var i = Math.floor(x), f = x - i;
+  var u = f * f * (3 - 2 * f);            // smoothstep 插值
+  return (_hash1(i) * (1 - u) + _hash1(i + 1) * u) * 2 - 1;  // 映射到 [-1,1]
+}
+function _fbm(x) {                          // 3 层倍频叠加
+  return _vnoise(x) * 0.6 + _vnoise(x * 2.13 + 11.7) * 0.28 + _vnoise(x * 4.07 + 23.1) * 0.12;
+}
+
+// ---- 眼球扫视状态机 (saccade) ----
+// 真人眼睛：短暂快速跳到新注视点 → 停留 → 再跳。静止也不"死盯"。
+var _sacFromX = 0, _sacFromY = 0, _sacToX = 0, _sacToY = 0;
+var _sacStart = 0, _sacDur = 120, _sacHoldUntil = Date.now() + 900;
+var _eyeX = 0, _eyeY = 0;
+function _scheduleSaccade(now) {
+  _sacFromX = _sacToX; _sacFromY = _sacToY;
+  // 新注视点：绝大多数看正前方附近，偶尔才瞟向稍远处
+  var spread = Math.random() < 0.15 ? 0.65 : 0.28;
+  _sacToX = (Math.random() * 2 - 1) * spread;
+  _sacToY = (Math.random() * 2 - 1) * spread * 0.6;
+  _sacStart = now;
+  _sacDur = 90 + Math.random() * 80;                 // 90~170ms 的快速移动
+  _sacHoldUntil = now + _sacDur + 1200 + Math.random() * 3200; // 停留 1.2~4.4s
+}
+
+// ---- 头部姿态：目标 + 弹簧阻尼 ----
+// 真人待机大部分时间几乎不动，偶尔缓慢偏个头再停住。
+// 用"离散随机目标 + 弹簧插值"，弹簧天然产生起步慢/到位轻微过冲回弹的自然曲线。
+var _poseTX = 0, _poseTY = 0, _poseTZ = 0;         // 当前姿态目标(度)
+var _poseX = 0, _poseY = 0, _poseZ = 0;            // 当前姿态值
+var _poseVX = 0, _poseVY = 0, _poseVZ = 0;         // 姿态速度(弹簧)
+var _nextPoseAt = Date.now() + 2000 + Math.random() * 3000;
+function _scheduleNewPose(now) {
+  // 70% 概率回到接近中心的自然站姿，30% 才偏头
+  if (Math.random() < 0.7) {
+    _poseTX = (Math.random() * 2 - 1) * 2.5;
+    _poseTY = (Math.random() * 2 - 1) * 1.5;
+    _poseTZ = (Math.random() * 2 - 1) * 1.5;
+  } else {
+    _poseTX = (Math.random() * 2 - 1) * 8.0;         // 偏头
+    _poseTY = (Math.random() * 2 - 1) * 4.0;
+    _poseTZ = (Math.random() * 2 - 1) * 4.0;
+  }
+  _nextPoseAt = now + 3000 + Math.random() * 6000;   // 每 3~9 秒换一次姿态
+}
+// 头发：次级动画弹簧（各段独立，被头部位移驱动 + 持续微摇曳，永不僵死）
+var _hairF = 0, _hairS = 0, _hairB = 0;      // 头发当前偏移
+var _hairFV = 0, _hairSV = 0, _hairBV = 0;   // 头发速度
+var _prevHeadX = 0, _prevHeadZ = 0;
+// 头部/身体平滑状态：消除鼠标离散事件的卡顿 + 身体独立拖尾
+var _headSmX = 0, _headSmY = 0, _headSmZ = 0;   // 平滑后的头部角度
+var _bodyX = 0, _bodyY = 0, _bodyZ = 0;         // 身体拖尾角度（滞后头部）
+
+function triggerInteraction(kind) {
+  _interactionKind = String(kind || 'pet_clicked');
+  _interactionUntil = Date.now() + 950;
+  _interactionPulse = 1.0;
+}
+window.triggerInteraction = triggerInteraction;
+(function waitAndHookRichInteractionTicker() {
+  var l2d = window.__sakuraLive2D;
+  if (!l2d || !l2d.app || !l2d.model) {
+    setTimeout(waitAndHookRichInteractionTicker, 100);
+    return;
+  }
+  _installRenderGuards();
+  _installSceneActionEventHandlers();
+  // 关掉库内置的 autoFocus：否则 pixi-live2d-display 每帧 updateFocus() 会在
+  // 我们设定的 ParamAngle 之上再 addParameterValueById(focus.x*30) 叠加一层鼠标跟随，
+  // 与本 ticker 抢头部朝向 → 鼠标跟随卡顿/加倍。头部朝向由本 ticker 独占。
+  // autoUpdate 保持开启（物理演算 physics.evaluate 依赖 model.update() 每帧运行）。
+  try { if (l2d.model.automator) l2d.model.automator.autoFocus = false; } catch(_) {}
+  var _seed = Math.random() * 1000;   // 每次启动相位不同，避免多实例同步
+  l2d.app.ticker.add(function() {
+    var now = Date.now();
+    var t = now / 1000 + _seed;
+    var cm = l2d.model.internalModel && l2d.model.internalModel.coreModel;
+    if (!cm || typeof cm.setParameterValueByIndex !== 'function') return;
+    var ids = _parameterIds(cm);
+    function hasP(n) { return ids.indexOf(n) >= 0; }
+    function setP(n, v) { try { _setParamByName(cm, ids, n, v); } catch(_) {} }
+
+    // ---- 眨眼：偶发双眨、说话/思考时眨得更勤 ----
+    if (now >= _nextBlinkAt && now > _blinkUntil) {
+      _blinkUntil = now + 150;
+      if (_doubleBlink) {
+        _doubleBlink = false;
+        _nextBlinkAt = now + 260;          // 连续第二眨
+      } else {
+        _doubleBlink = Math.random() < 0.18;
+        var base = (_speaking || _thinking) ? 1600 : 2600;
+        _nextBlinkAt = now + base + Math.random() * 2800;
+      }
+    }
+    var blinkValue = 1.0;
+    if (now < _blinkUntil) {
+      var blinkPhase = (now - (_blinkUntil - 150)) / 150;
+      blinkValue = 1.0 - Math.sin(_clamp01(blinkPhase) * Math.PI);
+    }
+
+    // ---- 交互脉冲 ----
+    var interaction = 0;
+    if (now < _interactionUntil) {
+      interaction = _easeOut((_interactionUntil - now) / 950);
+      _interactionPulse = interaction;
+    } else {
+      _interactionPulse *= 0.86;
+      interaction = _interactionPulse;
+    }
+
+    // ---- 鼠标视线权重：鼠标在动时以鼠标为主，否则自主漂移接管 ----
+    var gazeX = l2d.curX || 0;
+    var gazeY = l2d.curY || 0;
+    var gazeMag = Math.min(1, Math.sqrt(gazeX*gazeX + gazeY*gazeY) * 1.4);
+
+    // ---- 眼球：只跟随鼠标，无鼠标时归中静止（不再自主扫视/眼颤）----
+    var eyeTargetX = gazeX * 0.9 * gazeMag;
+    var eyeTargetY = -gazeY * 0.75 * gazeMag;
+    _eyeX += (eyeTargetX - _eyeX) * 0.30;
+    _eyeY += (eyeTargetY - _eyeY) * 0.30;
+
+    // ---- 头部：只跟随鼠标。无鼠标时目标归零 → 安静静止（不再自主偏头晃动）----
+    var headTX = gazeX * 30 * gazeMag;
+    var headTY = -gazeY * 24 * gazeMag;
+    var headTZ = (_thinking ? Math.sin(t * 1.6) * 2.0 : 0);
+    // 平滑跟随：鼠标活跃时跟手，静止时缓缓回正
+    var followK = 0.10 + gazeMag * 0.22;
+    _headSmX += (headTX - _headSmX) * followK;
+    _headSmY += (headTY - _headSmY) * followK;
+    _headSmZ += (headTZ - _headSmZ) * followK;
+    var headX = _headSmX, headY = _headSmY, headZ = _headSmZ;
+
+    // 身体：只被动跟随头部（轻微），不做任何自主重心摆动。
+    // 注意 ParamBodyAngleY 被物理引擎占用(IN ParamAngleY)，此处不写，交给物理。
+    _bodyX += (headX * 0.4 - _bodyX) * 0.04;
+    _bodyZ += (headZ * 0.35 - _bodyZ) * 0.04;
+
+    // 呼吸：唯一持续的动作，缓慢起伏（幅度收小，避免看起来在晃）
+    var breathRate = _speaking ? 1.9 : 1.4;
+    setP('ParamBreath', (Math.sin(t * breathRate) * 0.35 + 0.5));
+    setP('ParamAngleX', headX + interaction * 8.0);
+    setP('ParamAngleY', headY - interaction * 4.0);
+    setP('ParamAngleZ', headZ - interaction * 5.0);
+    setP('ParamBodyAngleX', _bodyX + interaction * 4.0);
+    setP('ParamBodyAngleZ', _bodyZ - interaction * 3.0);
+    setP('ParamEyeBallX', _eyeX + interaction * 0.12);
+    setP('ParamEyeBallY', _eyeY - interaction * 0.08);
+    setP('ParamEyeLOpen', blinkValue);
+    setP('ParamEyeROpen', blinkValue);
+
+    // ---- 头发：完全交给 Cubism 物理引擎(physics3.json) ----
+    // ATRI 头发的真实摆动由物理演算根据 ParamAngleX/Y/Z 自动算出(输出Param2~30骨节)。
+    // 手动写 ParamHairFront/Side/Back 会盖在物理之上产生僵硬的整片平移(不像头发)，故一律不碰。
+    if (hasP('ParamCheek')) setP('ParamCheek', interaction * 0.75);
+
+    if (_speaking) {
+      if (now >= _nextMouthTargetAt) {
+        _mouthTarget = 0.10 + Math.random() * 0.34;
+        _nextMouthTargetAt = now + 300 + Math.random() * 380;
+      }
+      _mouthOpen += (_mouthTarget - _mouthOpen) * 0.09;
+    } else {
+      _mouthOpen *= 0.78;
+    }
+    setP('ParamMouthOpenY', Math.max(_mouthOpen, interaction * 0.08));
+    // 维持 scene_actions 拥有的参数(换装/道具)，防止被渲染管线复位。
+    for (var _ownedKey in _OWNED_PARAM_VALUES) {
+      if (Object.prototype.hasOwnProperty.call(_OWNED_PARAM_VALUES, _ownedKey)) {
+        setP(_ownedKey, _OWNED_PARAM_VALUES[_ownedKey]);
+      }
+    }
+    _applyRenderGuards(cm);
+  });
+})();
+</script>
+</body>
+</html>
