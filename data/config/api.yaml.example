@@ -1,0 +1,31 @@
+# Sakura 配置文件示例
+# 复制此文件到 data/config/api.yaml 并填入你的实际配置
+
+llm:
+  # LLM API 配置（OpenAI / Claude / 其他兼容接口）
+  base_url: https://api.openai.com/v1
+  api_key: your-api-key-here
+  model: gpt-4
+  timeout_seconds: 60
+
+tts:
+  # TTS 服务配置
+  provider: gpt-sovits
+  enabled: true
+  
+  gpt_sovits:
+    # GPT-SoVITS API 地址（启动 api_v2.py 后默认为此地址）
+    api_url: http://127.0.0.1:9880/tts
+    
+    # GPT-SoVITS 安装路径（根据你的实际安装位置修改）
+    work_dir: D:/GPT-SoVITS
+    python_path: D:/GPT-SoVITS/runtime/python.exe
+    
+    # TTS 推理配置文件（可选，留空使用默认）
+    tts_config_path: ""
+    
+    # 语言设置
+    ref_lang: zh
+    text_lang: zh
+    text_split_method: cut0
+    timeout_seconds: 120

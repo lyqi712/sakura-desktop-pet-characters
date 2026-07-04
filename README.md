@@ -4,7 +4,7 @@
 
 ## 特性
 
-- 🎭 **多角色支持**：椿（完整）、亚托莉（模板）、达妮娅（模板）
+- 🎭 **多角色支持**：椿（完整）、亚托莉（完整）、达妮娅（模板）
 - 🎨 **Live2D / MMD 渲染**：支持 Live2D Cubism SDK 和 Three.js MMD 渲染
 - 🎤 **GPT-SoVITS 语音**：集成 GPT-SoVITS v2 Pro Plus，支持多音色、分段语音、嘴型同步
 - 💬 **LLM 对话**：支持 OpenAI / Claude / 其他兼容 API
@@ -46,16 +46,27 @@
 
 4. **配置 API 密钥**
 
-   编辑 `data/config/api.yaml`：
+   复制配置示例文件：
+
+   ```bash
+   cp data/config/api.yaml.example data/config/api.yaml
+   ```
+
+   编辑 `data/config/api.yaml`，填入你的实际配置：
 
    ```yaml
-   openai:
-     api_key: "your-api-key"
-     base_url: "https://api.openai.com/v1"
+   llm:
+     base_url: https://api.openai.com/v1
+     api_key: "your-api-key-here"
      model: "gpt-4"
    
-   gpt_sovits:
-     base_url: "http://127.0.0.1:9880"
+   tts:
+     provider: gpt-sovits
+     enabled: true
+     gpt_sovits:
+       api_url: "http://127.0.0.1:9880/tts"
+       work_dir: "D:/GPT-SoVITS"  # 你的 GPT-SoVITS 安装路径
+       python_path: "D:/GPT-SoVITS/runtime/python.exe"
    ```
 
 5. **启动桌宠**
@@ -102,7 +113,7 @@ sakura-desktop-pet-characters/
 ├── plugins/               # 插件目录
 ├── characters/            # 角色目录
 │   ├── chun/             # 椿（完整）
-│   ├── atri/             # 亚托莉（模板）
+│   ├── atri/             # 亚托莉（完整）
 │   └── dania/            # 达妮娅（模板）
 ├── tests/                 # 单元测试
 ├── scripts/               # 工具脚本
@@ -123,7 +134,7 @@ pytest tests/unit/ -v
 
 ## 限制与注意事项
 
-- **版权**：亚托莉、达妮娅模板不包含二进制资源，请在获得授权后使用
+- **版权**：达妮娅模板不包含二进制资源，请在获得授权后使用
 - **GPU**：语音合成需要 NVIDIA GPU（CUDA），CPU 模式不支持
 - **许可证兼容性**：避免将 GPL-3.0 项目（如 MoeChat）混入本仓库
 

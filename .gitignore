@@ -48,6 +48,7 @@ data/config/user_*.yaml
 data/chats/
 data/memory/
 data/live2d/
+!data/config/*.example
 
 # Character archives
 *.char
