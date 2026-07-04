@@ -36,19 +36,17 @@ env/
 
 # Sakura runtime
 runtime/
-data/
 temp/
 temp_*/
 logs/
 *.log
 
-# User data
+# User data (exclude runtime data, keep example configs)
 data/config/api.yaml
 data/config/user_*.yaml
 data/chats/
 data/memory/
 data/live2d/
-!data/config/*.example
 
 # Character archives
 *.char
